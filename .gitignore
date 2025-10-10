@@ -27,7 +27,7 @@ data/fireworks/episodes*.jsonl
 .env
 .env.local
 *.env
-.env.example
+apps/backend/.env.example
 
 # Checkpoints / models
 *.onnx
