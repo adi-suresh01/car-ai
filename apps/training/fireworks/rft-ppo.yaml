@@ -1,0 +1,23 @@
+version: "1"
+name: "car-ai-ppo-highway"
+environment:
+  docker_image: "fireworksai/base-pytorch:2.3.0"
+  entrypoint:
+    - "python"
+    - "scripts/train_ppo.py"
+    - "--steps"
+    - "1500000"
+    - "--n-envs"
+    - "8"
+resources:
+  cluster: "shared-a10"
+  max_duration: "06:00:00"
+artifacts:
+  output_paths:
+    - "runs/ppo"
+    - "runs/ppo/checkpoints"
+env:
+  - name: PYTHONPATH
+    value: "/workspace/apps/training/src"
+  - name: CAR_AI_SEED
+    value: "1234"

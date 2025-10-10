@@ -1,0 +1,38 @@
+# Node / frontend artifacts
+node_modules/
+dist/
+apps/frontend/dist/
+
+# Backend builds
+apps/backend/dist/
+
+# Logs and caches
+*.log
+.DS_Store
+*.tmp
+__pycache__/
+apps/training/.mypy_cache/
+apps/training/.ruff_cache/
+
+# Python virtual environments & training outputs
+.venv/
+apps/training/.venv/
+apps/training/runs/
+apps/training/output/
+
+# Generated datasets / episodes
+data/fireworks/episodes*.jsonl
+
+# Environment secrets
+.env
+.env.local
+*.env
+
+# Checkpoints / models
+*.onnx
+*.pt
+*.pth
+runs/
+
+# Fireworks artifacts
+fireworks-artifacts/
