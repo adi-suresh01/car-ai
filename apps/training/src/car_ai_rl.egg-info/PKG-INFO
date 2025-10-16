@@ -1,0 +1,30 @@
+Metadata-Version: 2.4
+Name: car-ai-rl
+Version: 0.1.0
+Summary: RL training pipeline for the car-ai simulator
+License: MIT
+Requires-Python: >=3.10
+Description-Content-Type: text/markdown
+Requires-Dist: gymnasium==0.29.1
+Requires-Dist: numpy>=1.26
+Requires-Dist: torch>=2.3
+Requires-Dist: stable-baselines3==2.3.2
+Requires-Dist: tensorboard>=2.17
+Requires-Dist: onnx>=1.16
+Requires-Dist: onnxruntime>=1.19
+Requires-Dist: pydantic>=2.9
+Requires-Dist: requests>=2.32
+Requires-Dist: tqdm>=4.66
+Provides-Extra: dev
+Requires-Dist: black==24.10.0; extra == "dev"
+Requires-Dist: ruff==0.6.8; extra == "dev"
+Requires-Dist: mypy==1.11.1; extra == "dev"
+
+# car-ai RL Training
+
+This package hosts the Python reinforcement-learning stack for the simulator. It provides:
+
+- A Gymnasium-compatible highway environment that mirrors the TypeScript simulation.
+- Scripts to train PPO/DQN controllers with Stable-Baselines3.
+- Utilities to export the resulting policy to ONNX for browser inference.
+- Fireworks RFT job specs for hosted training/evaluation.

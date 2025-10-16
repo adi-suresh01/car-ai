@@ -66,6 +66,23 @@ hooked to the mission store).
 2. Build Fireworks evaluator config comparing policy checkpoints (see `docs/fireworks.md`, §6)
 3. Run: `fireworks evals run --config evals/highway_cruise.yaml`
 
+### Fireworks custom evaluator (driving metrics)
+
+1. Export rollouts to `data/fireworks/episodes.jsonl` using the script above.
+2. Upload the dataset:
+   ```bash
+   firectl create dataset \
+     --name highway-ppo-rollouts \
+     --format jsonl \
+     --path data/fireworks/episodes.jsonl
+   ```
+3. Update `evals/highway_eval.yaml` with the dataset resource path (replace `<account-id>` with your Fireworks account ID).
+4. Submit the evaluation:
+   ```bash
+   fireworks evals run --config evals/highway_eval.yaml
+   ```
+   The evaluator (`evals/highway_metrics.py`) calculates collision rate, speed error, and gap violations and returns a composite score for each trajectory.
+
 ## 6. Wiring back into the app
 
 1. Serve the ONNX policy with `onnxruntime-web` in the frontend (load weights on mission updates)

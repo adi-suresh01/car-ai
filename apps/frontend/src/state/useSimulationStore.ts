@@ -5,6 +5,7 @@ import type {
   SimulationSnapshot,
   TrafficLaneProfile,
   VehicleState,
+  VoiceStatus,
 } from "../models/simulation";
 import { simulationController } from "../controllers/simulationController";
 
@@ -127,6 +128,8 @@ interface SimulationStore {
   controlInput: ControlInput;
   player: PlayerDynamics;
   mission: DrivingMissionState;
+  collision: boolean;
+  voiceStatus?: VoiceStatus;
   loadLayout: () => Promise<void>;
   syncTraffic: () => Promise<void>;
   hydrateSnapshot: (snapshot: SimulationSnapshot) => void;
@@ -210,6 +213,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   controlInput: defaultControlInput,
   player: createInitialPlayer(),
   mission: createDefaultMission(),
+  collision: false,
+  voiceStatus: undefined,
   loadLayout: async () => {
     set({ isLoading: true, error: undefined });
     try {
@@ -244,6 +249,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         player: playerState,
         controlInput: defaultControlInput,
         mission: createDefaultMission(),
+        collision: false,
+        voiceStatus: undefined,
         isLoading: false,
       });
 
@@ -281,6 +288,13 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         .filter((vehicle) => vehicle.id !== "player")
         .map((vehicle) => convertSnapshotVehicle(vehicle, laneCenters));
 
+      const collision = Boolean(snapshot.collision);
+      const voiceStatus = snapshot.voiceStatus ?? state.voiceStatus;
+      if (collision && !state.collision) {
+        // eslint-disable-next-line no-console
+        console.warn("Collision detected in simulation snapshot");
+      }
+
       return {
         laneCenters,
         laneProfiles: snapshot.lanes,
@@ -290,6 +304,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
           laneCenter: laneCenters[state.player.laneIndex] ?? state.player.laneCenter,
         },
         mission: snapshot.mission ?? state.mission ?? createDefaultMission(),
+        collision,
+        voiceStatus,
         lastSyncTimestamp: snapshot.timestamp,
       };
     });
@@ -305,8 +321,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     });
   },
   tick: (dt: number) => {
-  const state = get();
-  const { layout, laneCenters, controlInput, player, mission } = state;
+    const state = get();
+    const { layout, laneCenters, controlInput, player, mission, collision } = state;
   if (!layout) return;
 
   const steering = controlInput.steering;
@@ -335,7 +351,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       });
   }
 
-  const cruiseActive = mission.mode === "cruise" && !manualCruiseCancel;
+  const cruiseActive = mission.mode === "cruise" && !manualCruiseCancel && !collision;
   if (cruiseActive) {
     const targetSpeed = mission.cruiseTargetSpeedMph ?? currentSpeed;
     const speedError = targetSpeed - currentSpeed;
@@ -351,6 +367,11 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     } else {
       throttle = Math.max(throttle, 0.08);
     }
+  }
+
+  if (collision) {
+    throttle = 0;
+    brake = Math.max(brake, 1);
   }
 
   let gear = player.gear > 0 ? player.gear : resolveGearForSpeed(currentSpeed, 1);
@@ -492,6 +513,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       player: updatedPlayer,
       npcVehicles: updatedNpcVehicles,
       laneCenters: recalculatedLaneCenters,
+      collision,
     });
   },
   applyMission: (mission: DrivingMissionState) => {

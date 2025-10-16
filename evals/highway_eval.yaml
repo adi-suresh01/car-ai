@@ -1,0 +1,4 @@
+name: highway_ppo_eval
+module: evals.highway_metrics
+dataset: accounts/cheesecake/datasets/highway-ppo-rollouts
+model: dummy

@@ -1,0 +1,15 @@
+gymnasium==0.29.1
+numpy>=1.26
+torch>=2.3
+stable-baselines3==2.3.2
+tensorboard>=2.17
+onnx>=1.16
+onnxruntime>=1.19
+pydantic>=2.9
+requests>=2.32
+tqdm>=4.66
+
+[dev]
+black==24.10.0
+ruff==0.6.8
+mypy==1.11.1

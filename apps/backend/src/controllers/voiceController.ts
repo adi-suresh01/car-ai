@@ -3,7 +3,9 @@ import { elevenLabsService } from "../services/elevenLabsService";
 import { fireworksService } from "../services/fireworksService";
 import { SimulationService } from "../services/simulationService";
 import { logger } from "../utils/logger";
+import type { DrivingMissionSnapshot, DrivingMissionUpdate } from "../models/simulation";
 import { parseVoiceMission } from "../utils/voiceCommandParser";
+import { intentLogger } from "../utils/intentLogger";
 
 const MPS_TO_MPH = 1 / 0.44704;
 
@@ -122,6 +124,9 @@ class VoiceController {
       note?: string;
     } = {};
     const supplementaryNotes: string[] = [];
+
+    const missionBefore = this.simulationService.getMission();
+    const utteranceText = typeof utterance === "string" ? utterance : "";
 
     const playerState = this.simulationService.getPlayerState();
     const laneCount = this.simulationService.getLaneCount();
@@ -258,18 +263,86 @@ class VoiceController {
     const hasMeaningfulUpdate = meaningfulKeys.some((key) => patch[key] !== undefined);
 
     if (!hasMeaningfulUpdate) {
+      const infoSummary = this.handleInformationalCommand(utteranceText, missionBefore, req.body);
+      if (infoSummary) {
+        res.json({ mission: missionBefore, summary: infoSummary });
+        return;
+      }
       res.status(400).json({ error: "No actionable mission parameters provided" });
       return;
     }
 
     try {
       const mission = this.simulationService.updateMission(patch);
-      res.json({ mission });
+      const summary = this.buildVoiceSummary(mission, patch);
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: utteranceText,
+        summary,
+        mode: mission.mode,
+      });
+      void intentLogger.log({
+        timestamp: new Date().toISOString(),
+        utterance: utteranceText,
+        requestPayload: req.body,
+        missionBefore,
+        missionAfter: mission,
+      });
+      res.json({ mission, summary });
     } catch (error) {
       const message = error instanceof Error ? error.message : "Failed to apply mission";
       logger.error("Voice mission update failed", { error: message });
       res.status(400).json({ error: message });
     }
+  }
+
+  private buildVoiceSummary(mission: DrivingMissionSnapshot, patch: DrivingMissionUpdate): string {
+    switch (mission.mode) {
+      case "cruise": {
+        const mph = mission.cruiseTargetSpeedMph.toFixed(0);
+        const gapCars = (mission.cruiseGapMeters / 4.6).toFixed(1);
+        return `Cruise ${mph} mph, gap ${gapCars} cars`;
+      }
+      case "lane_change": {
+        if (mission.targetLaneIndex != null) {
+          return `Changing to lane ${mission.targetLaneIndex}`;
+        }
+        return "Lane change initiated";
+      }
+      case "overtake":
+        return "Overtake maneuver in progress";
+      default:
+        return patch.note ?? "Mission updated";
+    }
+  }
+
+  private handleInformationalCommand(
+    utterance: string,
+    mission: DrivingMissionSnapshot,
+    requestPayload: unknown,
+  ): string | null {
+    const normalized = utterance.toLowerCase().trim();
+    if (!normalized) {
+      return null;
+    }
+
+    if (normalized.includes("cop") || normalized.includes("police")) {
+      const summary = "No police reported within the next 10 miles.";
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: utterance,
+        summary,
+        mode: mission.mode,
+      });
+      void intentLogger.log({
+        timestamp: new Date().toISOString(),
+        utterance,
+        requestPayload,
+        missionBefore: mission,
+        missionAfter: mission,
+      });
+      return summary;
+    }
+
+    return null;
   }
 }
 

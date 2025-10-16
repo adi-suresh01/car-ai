@@ -9,6 +9,7 @@ import type {
   VehicleSnapshot,
   DrivingMissionSnapshot,
   DrivingMissionMode,
+  LaneChangeDirection,
 } from "../models/simulation";
 import { SimulationService } from "../services/simulationService";
 
@@ -43,6 +44,7 @@ export interface DrivingMission {
   cruiseGapMeters: number;
   mode: DrivingMissionMode;
   returnLaneIndex?: number | null;
+  laneChangeDirection?: LaneChangeDirection | null;
 }
 
 export interface DrivingEnvConfig {
@@ -177,6 +179,7 @@ export class DrivingEnvironment {
       cruiseGapMeters: snapshot.cruiseGapMeters,
       mode: snapshot.mode,
       returnLaneIndex: snapshot.returnLaneIndex ?? null,
+      laneChangeDirection: snapshot.laneChangeDirection ?? null,
     };
   }
 
@@ -219,7 +222,7 @@ export class DrivingEnvironment {
     const observation = this.buildObservation();
     const reward = this.computeReward(observation, collision, netAccel, laneDelta);
     const done = collision || this.elapsedSeconds >= this.config.maxEpisodeSeconds;
-    const snapshot = this.buildSnapshot();
+    const snapshot = this.buildSnapshot(collision);
     const laneChanged = this.ego.laneIndex !== previousLaneIndex ? 1 : 0;
 
     return {
@@ -341,7 +344,7 @@ export class DrivingEnvironment {
     };
   }
 
-  private buildSnapshot(): SimulationSnapshot {
+  private buildSnapshot(collision = false): SimulationSnapshot {
     return {
       timestamp: Date.now(),
       sceneId: SimulationService.getInstance().getLayoutSummary().activeScene.id,
@@ -373,6 +376,7 @@ export class DrivingEnvironment {
         behavior: "steady",
       })),
       mission: this.buildMissionSnapshot(),
+      collision,
     };
   }
 
@@ -383,6 +387,7 @@ export class DrivingEnvironment {
       cruiseGapMeters: this.mission.cruiseGapMeters,
       mode: this.mission.mode,
       returnLaneIndex: this.mission.returnLaneIndex ?? null,
+      laneChangeDirection: this.mission.laneChangeDirection ?? null,
       source: "rl",
       updatedAt: Date.now(),
     };

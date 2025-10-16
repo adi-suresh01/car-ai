@@ -6,6 +6,7 @@ import type { DrivingAction } from "../models/simulation";
 import { cruiseHeuristicPolicy } from "./policies/cruiseHeuristic";
 
 const MPH_TO_MPS = 0.44704;
+const SAFE_RANDOM_MAX = 281_474_976_710_655; // 2^48 - 1 (limit for crypto.randomInt)
 
 export interface MissionOverrides {
   targetLaneIndex?: number | null;
@@ -97,7 +98,7 @@ export const simulateEpisode = (
 
   return {
     episodeId: env.getEpisodeId(),
-    seed: options.seed ?? randomInt(0, Number.MAX_SAFE_INTEGER),
+    seed: options.seed ?? randomInt(SAFE_RANDOM_MAX),
     mission,
     metadata: {
       ...options.metadata,

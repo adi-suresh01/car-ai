@@ -22,6 +22,7 @@ apps/training/output/
 
 # Generated datasets / episodes
 data/fireworks/episodes*.jsonl
+data/voice_intents*.jsonl
 
 # Environment secrets
 .env

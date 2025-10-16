@@ -70,6 +70,15 @@ export interface SimulationSnapshot {
   player: PlayerSnapshot;
   vehicles: VehicleSnapshot[];
   mission: DrivingMissionSnapshot;
+  collision: boolean;
+  voiceStatus?: VoiceInteractionStatus;
+}
+
+export interface VoiceInteractionStatus {
+  lastUtterance?: string;
+  summary?: string;
+  mode?: DrivingMissionSnapshot["mode"];
+  timestamp?: number;
 }
 
 export type MissionSource = "system" | "manual" | "voice" | "intent" | "rl";

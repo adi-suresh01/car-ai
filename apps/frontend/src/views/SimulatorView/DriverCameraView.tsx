@@ -4,6 +4,8 @@ import { Color, Group, MathUtils, Mesh } from "three";
 import { Sky } from "@react-three/drei";
 import { useSimulationStore, buildVehicleList } from "../../state/useSimulationStore";
 import type { VehicleState } from "../../models/simulation";
+import AutopilotController from "../../components/AutopilotController";
+import CarPlayDisplay from "../../components/CarPlayDisplay";
 
 const LANE_WIDTH = 3.6;
 const SEGMENT_LENGTH = 12;
@@ -322,6 +324,7 @@ const DriverInteriorOverlay = () => {
 
 export const DriverCameraView = () => (
   <div className="canvas-container driver-view">
+    <AutopilotController enabled />
     <Suspense fallback={<div className="canvas-fallback">Loading cockpit…</div>}>
       <Canvas camera={{ position: [-0.36, 0.96, 1.9], fov: 64, near: 0.01 }}>
         <ExteriorScene />
@@ -330,6 +333,7 @@ export const DriverCameraView = () => (
       </Canvas>
     </Suspense>
     <DriverInteriorOverlay />
+    <CarPlayDisplay />
   </div>
 );
 

@@ -17,16 +17,20 @@ This document outlines how the multi‑lane traffic model is produced on the bac
     - Opportunistic lane changes when the current gap is too short and an adjacent lane offers more headroom. Lane changes retarget speed to the destination profile.
 
 - **Snapshot API**
-  - `GET /api/simulation/state` emits:
-    ```json
-    {
-      "timestamp": 173, "sceneId": "california-101",
+- `GET /api/simulation/state` emits:
+  ```json
+  {
+      "timestamp": 173,
+      "sceneId": "california-101",
       "lanes": [TrafficLaneProfile…],
-      "player": { ... }        // retained for future telemetry
-      "vehicles": [{ id, laneIndex, position: [x,0,z], speedMps, speedMph, ... }]
-    }
-    ```
+      "player": { ... },
+      "vehicles": [{ id, laneIndex, position: [x,0,z], speedMps, speedMph, ... }],
+      "mission": { ... },
+      "collision": false
+  }
+  ```
   - `position[0]` already encodes the lane centre so the client can place cars accurately in both cameras.
+  - `collision` flips to `true` when the ego bounding box overlaps an NPC; it resets once spacing is re-established. Use this to trigger crash sequences or reset the sim.
   - Support endpoints:
     - `POST /api/simulation/traffic/reset` clears NPCs and reseeds based on lane density.
     - `POST /api/simulation/traffic/spawn` inserts a custom vehicle (useful for scripted evals).

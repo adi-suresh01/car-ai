@@ -10,6 +10,7 @@ import type {
   SimulationSnapshot,
   DrivingMissionSnapshot,
   DrivingMissionUpdate,
+  VoiceInteractionStatus,
 } from "../models/simulation";
 import { logger } from "../utils/logger";
 
@@ -164,6 +165,8 @@ export class SimulationService {
   private readonly vehicles: TrafficVehicleState[] = [];
   private player: PlayerSnapshot;
   private mission: DrivingMissionSnapshot;
+  private playerCollision = false;
+  private voiceStatus: VoiceInteractionStatus = {};
   private lastTick: number;
   private readonly timer: NodeJS.Timeout;
 
@@ -193,7 +196,9 @@ export class SimulationService {
       source: "system",
       updatedAt: Date.now(),
     };
+    this.playerCollision = false;
     this.seedTraffic();
+    this.voiceStatus = {};
     this.lastTick = Date.now();
     this.timer = setInterval(() => {
       try {
@@ -231,12 +236,16 @@ export class SimulationService {
         behavior: vehicle.behavior,
       })),
       mission: { ...this.mission },
+      collision: this.playerCollision,
+      voiceStatus: this.voiceStatus,
     };
   }
 
   resetTraffic() {
     this.vehicles.splice(0, this.vehicles.length);
     this.seedTraffic();
+    this.playerCollision = false;
+    this.voiceStatus = {};
   }
 
   getPlayerState(): PlayerSnapshot {
@@ -288,6 +297,7 @@ export class SimulationService {
       type: "sedan",
       behavior: "steady",
     };
+    this.playerCollision = this.detectCollision();
   }
 
   getMission(): DrivingMissionSnapshot {
@@ -386,6 +396,13 @@ export class SimulationService {
       mission: this.mission,
     });
     return this.getMission();
+  }
+
+  updateVoiceStatus(status: VoiceInteractionStatus) {
+    this.voiceStatus = {
+      ...status,
+      timestamp: Date.now(),
+    };
   }
 
   spawnVehicle(input: {
@@ -554,6 +571,14 @@ export class SimulationService {
     }
 
     this.spawnNewVehicles(dt);
+    const collisionDetected = this.detectCollision();
+    if (collisionDetected && !this.playerCollision) {
+      logger.warn("Player collision detected", {
+        laneIndex: this.player.laneIndex,
+        positionZ: this.player.position?.[2] ?? 0,
+      });
+    }
+    this.playerCollision = collisionDetected;
   }
 
   private spawnNewVehicles(dt: number) {
@@ -681,6 +706,26 @@ export class SimulationService {
       const desiredMph = this.randBetween(targetProfile.minSpeedMph, targetProfile.maxSpeedMph);
       vehicle.targetSpeedMps = mphToMps(desiredMph);
     }
+  }
+
+  private detectCollision(): boolean {
+    const position = this.player.position ?? [this.getLaneCenter(this.player.laneIndex), 0, 0];
+    const [playerX, , playerZ] = position;
+    const playerHalfWidth = (this.player.widthMeters ?? 1.9) * 0.5;
+    const playerHalfLength = (this.player.lengthMeters ?? 4.6) * 0.5;
+
+    return this.vehicles.some((vehicle) => {
+      const vehicleX = this.getLaneCenter(vehicle.laneIndex);
+      const lateralGap = Math.abs(vehicleX - playerX);
+      const lateralAllow = playerHalfWidth + vehicle.widthMeters * 0.5 + 0.25;
+      if (lateralGap > lateralAllow) {
+        return false;
+      }
+
+      const longitudinalGap = Math.abs(vehicle.positionZ - playerZ);
+      const longitudinalAllow = playerHalfLength + vehicle.lengthMeters * 0.5 + 0.75;
+      return longitudinalGap <= longitudinalAllow;
+    });
   }
 
   private findNeighbors(
