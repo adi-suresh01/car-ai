@@ -23,6 +23,7 @@ import AutopilotController from "../../components/AutopilotController";
 import CarPlayDisplay from "../../components/CarPlayDisplay";
 import DashboardConsole from "../../components/DashboardConsole";
 import VoiceDebugPanel from "../../components/VoiceDebugPanel";
+import LaneChangeToast from "../../components/LaneChangeToast";
 
 const LANE_WIDTH = 3.6;
 const SEGMENT_LENGTH = 12;
@@ -594,6 +595,7 @@ export const DriverCameraView = () => (
     <DashboardConsole />
     <CarPlayDisplay />
     <VoiceDebugPanel />
+    <LaneChangeToast />
   </div>
 );
 
