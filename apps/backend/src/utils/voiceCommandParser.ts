@@ -22,11 +22,70 @@ const clampLane = (value: number, laneCount: number) => {
   return Math.max(0, Math.min(laneCount - 1, value));
 };
 
+const NUMBER_WORDS: Record<string, number> = {
+  zero: 0,
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+  eleven: 11,
+  twelve: 12,
+  thirteen: 13,
+  fourteen: 14,
+  fifteen: 15,
+  sixteen: 16,
+  seventeen: 17,
+  eighteen: 18,
+  nineteen: 19,
+  twenty: 20,
+  thirty: 30,
+  forty: 40,
+  fifty: 50,
+  sixty: 60,
+  seventy: 70,
+  eighty: 80,
+  ninety: 90,
+};
+
+const parseNumberWords = (utterance: string): number | undefined => {
+  const tokens = utterance.split(/[\s-]+/).filter(Boolean);
+  let total = 0;
+  let current = 0;
+  let matched = false;
+
+  tokens.forEach((token) => {
+    const value = NUMBER_WORDS[token];
+    if (value === undefined) {
+      return;
+    }
+    matched = true;
+    if (value >= 20) {
+      current += value;
+    } else {
+      current += value;
+    }
+  });
+
+  if (!matched) return undefined;
+  total += current;
+  return total > 0 ? total : undefined;
+};
+
 const extractSpeed = (utterance: string): number | undefined => {
   const match = utterance.match(MPH_REGEX);
-  if (!match) return undefined;
-  const value = match[1];
-  return value ? Number.parseFloat(value) : undefined;
+  if (match?.[1]) {
+    const parsed = Number.parseFloat(match[1]);
+    if (Number.isFinite(parsed)) {
+      return parsed;
+    }
+  }
+  return parseNumberWords(utterance);
 };
 
 const extractGapCars = (utterance: string): number | undefined => {
