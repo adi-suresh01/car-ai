@@ -12,6 +12,9 @@ const VoiceDebugPanel = () => {
     isRecording,
     isTranscribing,
     lastTranscript,
+    enabled,
+    enable,
+    disable,
     error: captureError,
   } = useVoiceCapture();
   const [utterance, setUtterance] = useState("");
@@ -45,8 +48,11 @@ const VoiceDebugPanel = () => {
         </button>
       </div>
       <div className="voice-debug-controls">
-        <button type="button" onClick={isRecording ? stopRecording : startRecording} disabled={isTranscribing}>
-          {isRecording ? "Stop Recording" : "Record Voice"}
+        <button type="button" onClick={enabled ? disable : enable} disabled={isTranscribing}>
+          {enabled ? "Voice Active" : "Enable Voice"}
+        </button>
+        <button type="button" onClick={isRecording ? stopRecording : startRecording} disabled={!enabled}>
+          {isRecording ? "Stop" : "Record"}
         </button>
         {isTranscribing ? <span>Transcribing…</span> : null}
       </div>

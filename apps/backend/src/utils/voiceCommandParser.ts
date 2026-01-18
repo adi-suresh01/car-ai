@@ -4,6 +4,7 @@ const CAR_LENGTH_METERS = 4.6;
 const DEFAULT_GAP_CARS = 2;
 const MPH_REGEX = /(\d+(?:\.\d+)?)\s*(?:mph|miles per hour|mile per hour)?/i;
 const GAP_REGEX = /(\d+(?:\.\d+)?)\s*(?:car|cars|car length|car lengths)/i;
+const DELTA_REGEX = /(\d+(?:\.\d+)?)\s*(?:mph)?/i;
 
 export interface VoiceCommandContext {
   currentSpeedMph: number;
@@ -57,6 +58,10 @@ export const parseVoiceMission = (
   const isCruiseCommand =
     utterance.includes("cruise control") || utterance.startsWith("cruise") || isSpeedCommand;
   const isOvertakeCommand = utterance.includes("overtake");
+  const isSpeedIncrease =
+    containsAny(utterance, ["increase speed", "speed up", "go faster", "faster", "raise speed"]);
+  const isSpeedDecrease =
+    containsAny(utterance, ["decrease speed", "slow down", "go slower", "slower", "reduce speed"]);
   const wantsLeft = containsAny(utterance, ["left lane", "move left", "shift left", "leftmost lane"]);
   const wantsRight = containsAny(utterance, ["right lane", "move right", "shift right", "rightmost lane"]);
 
@@ -98,6 +103,24 @@ export const parseVoiceMission = (
         laneChangeDirection: null,
       },
       note: `Voice command: cruise ${Math.round(speedMph)} mph, gap ${gapCars} cars`,
+    };
+  }
+
+  if (isSpeedIncrease || isSpeedDecrease) {
+    const deltaMatch = utterance.match(DELTA_REGEX);
+    const deltaMph = deltaMatch ? Number.parseFloat(deltaMatch[1]) : 5;
+    const signedDelta = isSpeedIncrease ? Math.abs(deltaMph) : -Math.abs(deltaMph);
+    const nextSpeed = Math.max(0, currentSpeedMph + signedDelta);
+    return {
+      update: {
+        mode: "cruise",
+        cruiseTargetSpeedMph: nextSpeed,
+        cruiseGapMeters: DEFAULT_GAP_CARS * CAR_LENGTH_METERS,
+        targetLaneIndex: currentLaneIndex,
+        returnLaneIndex: null,
+        laneChangeDirection: null,
+      },
+      note: `Voice command: adjust speed to ${Math.round(nextSpeed)} mph`,
     };
   }
 
