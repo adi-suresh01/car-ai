@@ -251,6 +251,13 @@ export class DrivingEnvironment {
   }
 
   private updateTraffic(dt: number) {
+    const laneTailZ = new Map<number, number>();
+    this.traffic.forEach((vehicle) => {
+      const current = laneTailZ.get(vehicle.laneIndex);
+      if (current === undefined || vehicle.positionZ < current) {
+        laneTailZ.set(vehicle.laneIndex, vehicle.positionZ);
+      }
+    });
     this.traffic = this.traffic.map((vehicle) => {
       const nextZ = vehicle.positionZ + vehicle.speedMps * dt;
       if (nextZ <= TRAFFIC_DESPAWN_Z) {
@@ -260,9 +267,15 @@ export class DrivingEnvironment {
         };
       }
       const jitter = this.rng() * TRAFFIC_RESPAWN_JITTER;
+      const profile = this.laneProfiles[vehicle.laneIndex] ?? FALLBACK_LANE_PROFILE;
+      const tailZ = laneTailZ.get(vehicle.laneIndex) ?? TRAFFIC_RESPAWN_Z;
+      const respawnZ = Math.min(
+        TRAFFIC_RESPAWN_Z - jitter,
+        tailZ - profile.preferredSpacingMeters - vehicle.lengthMeters * 0.5,
+      );
       return {
         ...vehicle,
-        positionZ: TRAFFIC_RESPAWN_Z - jitter,
+        positionZ: respawnZ,
       };
     });
   }
