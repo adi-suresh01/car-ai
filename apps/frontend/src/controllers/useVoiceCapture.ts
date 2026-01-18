@@ -53,6 +53,8 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
       try {
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
         const arrayBuffer = await blob.arrayBuffer();
+        // eslint-disable-next-line no-console
+        console.log("Voice capture", { bytes: arrayBuffer.byteLength, mimeType: recorder.mimeType });
         const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${options.language ?? ""}`,
           {
@@ -68,6 +70,8 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
         if (!data.text) {
           throw new Error("Transcription response missing text");
         }
+        // eslint-disable-next-line no-console
+        console.log("Voice transcript", data.text);
         setLastTranscript(data.text);
         await apiClient.post(commandEndpoint, { utterance: data.text });
       } catch (err) {
@@ -89,6 +93,8 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     recorder.start();
     mediaRecorderRef.current = recorder;
     setIsRecording(true);
+    // eslint-disable-next-line no-console
+    console.log("Voice recording started");
     clearLoopTimeout();
     loopTimeoutRef.current = window.setTimeout(() => {
       stopRecording();

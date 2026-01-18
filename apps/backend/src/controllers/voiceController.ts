@@ -43,6 +43,13 @@ class VoiceController {
     }
 
     try {
+      logger.info("Voice file transcription request", {
+        contentType,
+        bytes: buffer.length,
+        modelId,
+        language,
+        filename,
+      });
       const result = await elevenLabsService.transcribeAudioFile({
         audioBuffer: buffer,
         mimeType: contentType,
@@ -50,9 +57,14 @@ class VoiceController {
         ...(modelId ? { modelId } : {}),
         ...(language ? { language } : {}),
       });
+      logger.info("Voice file transcription result", {
+        textLength: result.text?.length ?? 0,
+        textPreview: result.text?.slice(0, 120) ?? "",
+      });
       res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
+      logger.error("Voice file transcription failed", { error: message });
       res.status(500).json({ error: message });
     }
   }
@@ -174,6 +186,7 @@ class VoiceController {
       res.status(400).json({ error: "utterance is required" });
       return;
     }
+    logger.info("Voice command received", { utterance });
     req.body = { ...req.body, source: "voice" };
     await this.applyMission(req, res);
   }

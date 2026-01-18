@@ -60,7 +60,7 @@ const VoiceDebugPanel = () => {
       <button className="voice-debug-reset" type="button" onClick={handleReset}>
         Reset Voice Status
       </button>
-      {lastSummary ? <div className="voice-debug-summary">{lastSummary}</div> : null}
+      {lastSummary ? <div className="voice-debug-summary">Command: {lastSummary}</div> : null}
       {error || captureError ? <div className="voice-debug-error">{error ?? captureError}</div> : null}
     </div>
   );
