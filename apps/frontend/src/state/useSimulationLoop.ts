@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { useSimulationStore } from "./useSimulationStore";
+import { simulationController } from "../controllers/simulationController";
 
 export const useSimulationLoop = () => {
   const tick = useSimulationStore((state) => state.tick);
@@ -26,6 +27,12 @@ export const useSimulationLoop = () => {
   useEffect(() => {
     const intervalId = window.setInterval(() => {
       void syncTraffic();
+      const { player } = useSimulationStore.getState();
+      void simulationController.updatePlayer({
+        laneIndex: player.laneIndex,
+        speedMph: player.speedMph,
+        positionZ: player.positionZ,
+      });
     }, 1000);
 
     return () => {

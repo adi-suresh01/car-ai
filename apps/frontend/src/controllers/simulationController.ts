@@ -14,6 +14,14 @@ class SimulationController {
     return apiClient.get<SimulationSnapshot>("/simulation/state");
   }
 
+  async updatePlayer(payload: {
+    laneIndex?: number;
+    speedMph?: number;
+    positionZ?: number;
+  }): Promise<void> {
+    return apiClient.post<void>("/simulation/player", payload);
+  }
+
   async updateMission(payload: {
     speedMph?: number;
     gapMeters?: number;
