@@ -12,6 +12,7 @@ import type {
   LaneChangeDirection,
 } from "../models/simulation";
 import { SimulationService } from "../services/simulationService";
+import { createSeededRng, normalizeSeed } from "../utils/rng";
 
 const MPH_TO_MPS = 0.44704;
 const LANE_WIDTH_METERS = 3.6;
@@ -58,6 +59,7 @@ export interface DrivingEnvConfig {
   maxBrakeMps2?: number;
   coastDragMps2?: number;
   laneCount?: number;
+  seed?: number;
 }
 
 const DEFAULT_CONFIG: Required<DrivingEnvConfig> = {
@@ -68,6 +70,7 @@ const DEFAULT_CONFIG: Required<DrivingEnvConfig> = {
   maxBrakeMps2: 6.5,
   coastDragMps2: 1.2,
   laneCount: 5,
+  seed: 0,
 };
 
 const FALLBACK_LANE_PROFILE: TrafficLaneProfile = {
@@ -88,9 +91,13 @@ export class DrivingEnvironment {
   private elapsedSeconds = 0;
   private episodeId: string;
   private mission: DrivingMission;
+  private rng: () => number;
+  private seed: number;
 
   constructor(config: DrivingEnvConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
+    this.seed = normalizeSeed(config.seed);
+    this.rng = createSeededRng(this.seed);
     const { lanes } = SimulationService.getInstance().getSnapshot();
     this.laneProfiles = lanes.map((lane) => ({ ...lane }));
     this.episodeId = randomUUID();
@@ -114,6 +121,8 @@ export class DrivingEnvironment {
 
   reset(goal?: Partial<DrivingMission>): { observation: DrivingObservation; snapshot: SimulationSnapshot } {
     this.episodeId = randomUUID();
+    this.seed = normalizeSeed(this.seed + 1);
+    this.rng = createSeededRng(this.seed);
     const snapshot = SimulationService.getInstance().getSnapshot();
     this.traffic = snapshot.vehicles.map((vehicle) => ({
       id: vehicle.id,
@@ -250,7 +259,7 @@ export class DrivingEnvironment {
           positionZ: nextZ,
         };
       }
-      const jitter = Math.random() * TRAFFIC_RESPAWN_JITTER;
+      const jitter = this.rng() * TRAFFIC_RESPAWN_JITTER;
       return {
         ...vehicle,
         positionZ: TRAFFIC_RESPAWN_Z - jitter,
