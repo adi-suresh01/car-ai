@@ -82,7 +82,7 @@ export class ElevenLabsService {
     const formData = new FormData();
     const filename = payload.filename ?? "audio.webm";
     const blob = new Blob([payload.audioBuffer], { type: payload.mimeType });
-    formData.append("audio", blob, filename);
+    formData.append("file", blob, filename);
     formData.append("model_id", payload.modelId ?? "universal-1");
     if (payload.language) {
       formData.append("language", payload.language);
