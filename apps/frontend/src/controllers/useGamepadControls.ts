@@ -14,6 +14,7 @@ const applyDeadzone = (value: number) => {
 
 export const useGamepadControls = () => {
   const updateControlInput = useSimulationStore((state) => state.updateControlInput);
+  const markManualInput = useSimulationStore((state) => state.markManualInput);
 
   useEffect(() => {
     let animation: number;
@@ -31,6 +32,9 @@ export const useGamepadControls = () => {
         const brake = vertical > 0 ? vertical : 0;
 
         updateControlInput({ steering, throttle, brake });
+        if (Math.abs(steering) > 0.05 || throttle > 0.05 || brake > 0.05) {
+          markManualInput();
+        }
       }
 
       animation = requestAnimationFrame(poll);
@@ -42,5 +46,5 @@ export const useGamepadControls = () => {
       cancelAnimationFrame(animation);
       updateControlInput({ steering: 0, throttle: 0, brake: 0 });
     };
-  }, [updateControlInput]);
+  }, [updateControlInput, markManualInput]);
 };

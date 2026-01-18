@@ -142,10 +142,12 @@ interface SimulationStore {
   voiceStatus?: VoiceStatus;
   voiceHistory: Array<{ utterance: string; summary?: string; timestamp?: number }>;
   dashboard: DashboardState;
+  lastManualInputAt?: number;
   loadLayout: () => Promise<void>;
   syncTraffic: () => Promise<void>;
   hydrateSnapshot: (snapshot: SimulationSnapshot) => void;
   updateControlInput: (input: ControlInput) => void;
+  markManualInput: () => void;
   tick: (dt: number) => void;
   applyMission: (mission: DrivingMissionState) => void;
   updateMission: (input: MissionUpdateInput) => Promise<void>;
@@ -243,6 +245,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   collision: false,
   voiceStatus: undefined,
   voiceHistory: [],
+  lastManualInputAt: undefined,
   dashboard: {
     activeApp: "maps",
     headline: "Navigation Ready",
@@ -379,9 +382,12 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       },
     });
   },
+  markManualInput: () => {
+    set({ lastManualInputAt: Date.now() });
+  },
   tick: (dt: number) => {
     const state = get();
-    const { layout, laneCenters, controlInput, player, mission, collision } = state;
+    const { layout, laneCenters, controlInput, player, mission, collision, lastManualInputAt } = state;
   if (!layout) return;
 
   const steering = controlInput.steering;
@@ -391,7 +397,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   const currentSpeed = player.speedMph;
 
   const manualCruiseCancel =
-    mission.mode === "cruise" && (throttle > 0.05 || brake > 0.05);
+    mission.mode === "cruise" &&
+    (throttle > 0.05 || brake > 0.05) &&
+    lastManualInputAt !== undefined &&
+    Date.now() - lastManualInputAt < 800;
 
   if (manualCruiseCancel) {
     set((currentState) => ({
