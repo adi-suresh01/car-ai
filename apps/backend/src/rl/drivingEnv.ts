@@ -248,10 +248,11 @@ export class DrivingEnvironment {
 
   step(action: DrivingAction): DrivingStepResult {
     const dt = this.config.timeStepSeconds;
-    const accelCommand = action.acceleration ?? 0;
-    const brakeCommand = action.brake ?? 0;
-    const requestedLane =
+    const accelCommand = Math.max(0, Math.min(1, action.acceleration ?? 0));
+    const brakeCommand = Math.max(0, Math.min(1, action.brake ?? 0));
+    const requestedLaneRaw =
       action.requestedLaneIndex ?? this.mission.targetLaneIndex ?? this.ego.laneIndex;
+    const requestedLane = Math.max(0, Math.min(this.laneProfiles.length - 1, requestedLaneRaw));
 
     const throttleAccel = accelCommand * this.config.maxAccelMps2;
     const brakeDecel = brakeCommand * this.config.maxBrakeMps2;
