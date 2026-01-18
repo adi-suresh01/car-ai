@@ -6,6 +6,7 @@ const router = Router();
 router.get("/layout", simulationController.getLayout);
 router.get("/state", simulationController.getSnapshot);
 router.get("/mission", simulationController.getMission);
+router.get("/scenario", simulationController.getScenario);
 router.post("/traffic/reset", simulationController.resetTraffic);
 router.post("/traffic/spawn", simulationController.spawnVehicle);
 router.post("/player", simulationController.updatePlayer);

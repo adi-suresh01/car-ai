@@ -6,6 +6,7 @@ import type {
   TrafficBehaviorProfile,
 } from "../models/simulation";
 import { SimulationService } from "../services/simulationService";
+import { loadScenario } from "../utils/scenarioLoader";
 
 class SimulationController {
   private readonly service = SimulationService.getInstance();
@@ -19,6 +20,16 @@ class SimulationController {
   getSnapshot = (_req: Request, res: Response) => {
     const snapshot = this.service.getSnapshot();
     res.json(snapshot);
+  };
+
+  getScenario = (req: Request, res: Response) => {
+    const scenarioId = typeof req.query.id === "string" ? req.query.id : "default";
+    const scenario = loadScenario(scenarioId);
+    if (!scenario) {
+      res.status(404).json({ error: `Scenario '${scenarioId}' not found` });
+      return;
+    }
+    res.json(scenario);
   };
 
   resetTraffic = (_req: Request, res: Response) => {
