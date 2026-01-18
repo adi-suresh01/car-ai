@@ -278,7 +278,12 @@ export class SimulationService {
     }
 
     if (partial.position !== undefined) {
-      next.position = partial.position;
+      const [x, y, z] = partial.position;
+      if ([x, y, z].every((value) => Number.isFinite(value))) {
+        next.position = partial.position;
+      } else {
+        logger.warn("Ignored invalid player position update", { position: partial.position });
+      }
     }
 
     if (partial.positionZ !== undefined) {
