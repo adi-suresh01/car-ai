@@ -6,6 +6,7 @@ import type { EpisodeMetadata } from "../rl/episodeTypes";
 interface CliOptions {
   episodes: number;
   output: string;
+  telemetryOutput?: string;
   speedMph?: number;
   gapMeters?: number;
   gapCars?: number;
@@ -17,6 +18,7 @@ interface CliOptions {
 const DEFAULTS: CliOptions = {
   episodes: 20,
   output: "../../data/fireworks/episodes.jsonl",
+  telemetryOutput: undefined,
   speedMph: 68,
   gapMeters: 30,
   command: "cruise_control",
@@ -51,6 +53,10 @@ const parseArgs = (): CliOptions => {
         break;
       case "output":
         options.output = requireValue(key, args[i + 1]);
+        i += 1;
+        break;
+      case "telemetry-output":
+        options.telemetryOutput = requireValue(key, args[i + 1]);
         i += 1;
         break;
       case "speed":
@@ -129,6 +135,24 @@ const main = async () => {
 
   const lines = episodes.map((episode) => JSON.stringify(episode));
   await writeEpisodes(options.output, lines);
+  if (options.telemetryOutput) {
+    const telemetryLines = episodes.flatMap((episode) =>
+      episode.steps.map((step) =>
+        JSON.stringify({
+          episodeId: episode.episodeId,
+          seed: episode.seed,
+          step: step.step,
+          timestampSeconds: step.timestampSeconds,
+          observation: step.observation,
+          action: step.action,
+          reward: step.reward,
+          info: step.info,
+          done: step.done,
+        }),
+      ),
+    );
+    await writeEpisodes(options.telemetryOutput, telemetryLines);
+  }
   // eslint-disable-next-line no-console
   console.log(
     `Generated ${episodes.length} episodes to ${resolve(options.output)} (command=${options.command})`,
