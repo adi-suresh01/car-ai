@@ -1,9 +1,11 @@
 import { useCallback, useState } from "react";
 import { apiClient } from "../services/apiClient";
+import { useSimulationStore } from "../state/useSimulationStore";
+import type { DrivingMissionState } from "../models/simulation";
 
 interface VoiceCommandResponse {
   summary?: string;
-  mission?: unknown;
+  mission?: DrivingMissionState;
 }
 
 export const useVoiceCommand = () => {
@@ -16,6 +18,9 @@ export const useVoiceCommand = () => {
     setError(undefined);
     try {
       const response = await apiClient.post<VoiceCommandResponse>("/voice/command", { utterance });
+      if (response?.mission) {
+        useSimulationStore.getState().applyMission(response.mission);
+      }
       setLastSummary(response?.summary);
       return response;
     } catch (err) {

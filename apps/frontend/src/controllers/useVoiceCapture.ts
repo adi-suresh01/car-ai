@@ -1,5 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import { apiClient } from "../services/apiClient";
+import { useSimulationStore } from "../state/useSimulationStore";
+import type { DrivingMissionState } from "../models/simulation";
 
 interface VoiceCaptureOptions {
   commandEndpoint?: string;
@@ -80,7 +82,12 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
         // eslint-disable-next-line no-console
         console.log("Voice transcript", data.text);
         setLastTranscript(data.text);
-        await apiClient.post(commandEndpoint, { utterance: data.text });
+        const response = await apiClient.post<{ mission?: DrivingMissionState }>(commandEndpoint, {
+          utterance: data.text,
+        });
+        if (response?.mission) {
+          useSimulationStore.getState().applyMission(response.mission);
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Voice capture failed";
         setError(message);
