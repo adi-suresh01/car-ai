@@ -332,9 +332,12 @@ export class DrivingEnvironment {
       rightGapBehindMeters: rightGapBehind,
       rightRelativeSpeedAheadMps: rightAhead ? rightAhead.speedMps - this.ego.speedMps : 0,
       rightRelativeSpeedBehindMps: rightBehind ? rightBehind.speedMps - this.ego.speedMps : 0,
+      headingDeltaRad: this.ego.headingRad,
     };
     if (this.mission.targetLaneIndex !== null && this.mission.targetLaneIndex !== undefined) {
       observation.targetLaneIndex = this.mission.targetLaneIndex;
+      observation.targetLaneOffsetMeters =
+        (this.mission.targetLaneIndex - this.ego.laneIndex) * LANE_WIDTH_METERS - this.ego.laneOffset;
     }
     observation.missionMode = this.mission.mode;
     if (this.mission.returnLaneIndex !== undefined) {

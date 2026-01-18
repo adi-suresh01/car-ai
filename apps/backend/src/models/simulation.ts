@@ -128,6 +128,8 @@ export interface DrivingObservation {
   rightGapBehindMeters?: number;
   rightRelativeSpeedAheadMps?: number;
   rightRelativeSpeedBehindMps?: number;
+  headingDeltaRad?: number;
+  targetLaneOffsetMeters?: number;
   targetLaneIndex?: number;
   distanceToMergePointMeters?: number;
   missionMode?: DrivingMissionMode;
