@@ -1,3 +1,5 @@
+import type { VoiceInteractionStatus } from "./simulation";
+
 export interface TranscriptionRequestPayload {
   audioUrl: string;
   modelId?: string;
@@ -47,3 +49,27 @@ export interface SpeechSynthesisResult {
   format: "mp3" | "wav" | "pcm";
   raw: unknown;
 }
+
+const VALID_MODES = ["hold", "cruise", "lane_change", "overtake"] as const;
+
+export const isVoiceInteractionStatus = (value: unknown): value is VoiceInteractionStatus => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  const candidate = value as Record<string, unknown>;
+  const { lastUtterance, summary, mode, timestamp } = candidate;
+
+  if (lastUtterance !== undefined && typeof lastUtterance !== "string") {
+    return false;
+  }
+  if (summary !== undefined && typeof summary !== "string") {
+    return false;
+  }
+  if (mode !== undefined && !VALID_MODES.includes(mode as (typeof VALID_MODES)[number])) {
+    return false;
+  }
+  if (timestamp !== undefined && typeof timestamp !== "number") {
+    return false;
+  }
+  return true;
+};
