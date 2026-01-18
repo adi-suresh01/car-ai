@@ -761,6 +761,20 @@
   color: rgba(210, 224, 246, 0.9);
 }
 
+.voice-debug-reset {
+  margin-top: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(80, 98, 140, 0.6);
+  background: rgba(24, 30, 42, 0.9);
+  color: rgba(214, 225, 244, 0.9);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  cursor: pointer;
+}
+
 .voice-debug-error {
   margin-top: 6px;
   font-size: 0.74rem;

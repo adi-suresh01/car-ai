@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useVoiceCommand } from "../controllers/useVoiceCommand";
+import { apiClient } from "../services/apiClient";
 
 const VoiceDebugPanel = () => {
   const enabled = import.meta.env.VITE_SHOW_VOICE_DEBUG === "true";
@@ -16,6 +17,10 @@ const VoiceDebugPanel = () => {
     setUtterance("");
   };
 
+  const handleReset = async () => {
+    await apiClient.post<void>("/voice/reset");
+  };
+
   return (
     <div className="voice-debug-panel">
       <div className="voice-debug-header">Voice Debug</div>
@@ -30,6 +35,9 @@ const VoiceDebugPanel = () => {
           {isSending ? "Sending…" : "Send"}
         </button>
       </div>
+      <button className="voice-debug-reset" type="button" onClick={handleReset}>
+        Reset Voice Status
+      </button>
       {lastSummary ? <div className="voice-debug-summary">{lastSummary}</div> : null}
       {error ? <div className="voice-debug-error">{error}</div> : null}
     </div>
