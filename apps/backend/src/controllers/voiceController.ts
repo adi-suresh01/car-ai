@@ -342,6 +342,74 @@ class VoiceController {
       return summary;
     }
 
+    if (normalized.includes("traffic") || normalized.includes("slowdown")) {
+      const summary = "Moderate traffic 2 miles ahead. Estimated delay: 4 minutes.";
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: utterance,
+        summary,
+        mode: mission.mode,
+      });
+      void intentLogger.log({
+        timestamp: new Date().toISOString(),
+        utterance,
+        requestPayload,
+        missionBefore: mission,
+        missionAfter: mission,
+      });
+      return summary;
+    }
+
+    if (normalized.includes("hazard") || normalized.includes("accident") || normalized.includes("debris")) {
+      const summary = "No reported hazards within the next 5 miles.";
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: utterance,
+        summary,
+        mode: mission.mode,
+      });
+      void intentLogger.log({
+        timestamp: new Date().toISOString(),
+        utterance,
+        requestPayload,
+        missionBefore: mission,
+        missionAfter: mission,
+      });
+      return summary;
+    }
+
+    if (normalized.includes("camera")) {
+      const summary = "Speed camera reported 5.1 miles ahead.";
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: utterance,
+        summary,
+        mode: mission.mode,
+      });
+      void intentLogger.log({
+        timestamp: new Date().toISOString(),
+        utterance,
+        requestPayload,
+        missionBefore: mission,
+        missionAfter: mission,
+      });
+      return summary;
+    }
+
+    if (normalized.includes("exit") || normalized.includes("offramp")) {
+      const summary = "Next exit in 1.2 miles: Embarcadero.";
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: utterance,
+        summary,
+        mode: mission.mode,
+      });
+      void intentLogger.log({
+        timestamp: new Date().toISOString(),
+        utterance,
+        requestPayload,
+        missionBefore: mission,
+        missionAfter: mission,
+      });
+      return summary;
+    }
+
     return null;
   }
 }
