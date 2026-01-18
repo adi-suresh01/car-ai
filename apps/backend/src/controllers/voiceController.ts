@@ -9,6 +9,55 @@ import { intentLogger } from "../utils/intentLogger";
 import { mapIntentToMission } from "../utils/intentMissionMapper";
 
 const MPS_TO_MPH = 1 / 0.44704;
+const VOICE_COMMAND_KEYWORDS = [
+  "cruise",
+  "speed",
+  "mph",
+  "faster",
+  "slower",
+  "left",
+  "right",
+  "lane",
+  "overtake",
+  "gap",
+  "exit",
+  "offramp",
+  "merge",
+  "traffic",
+  "police",
+  "cop",
+  "hazard",
+  "accident",
+  "debris",
+  "camera",
+];
+
+const isLikelyVoiceCommand = (utterance: string) => {
+  const normalized = utterance.toLowerCase().trim();
+  if (!normalized || normalized.length < 3) {
+    return false;
+  }
+  if (!/[a-z0-9]/.test(normalized)) {
+    return false;
+  }
+  const bracketed = normalized.startsWith("(") || normalized.startsWith("[");
+  if (bracketed && (normalized.endsWith(")") || normalized.endsWith("]"))) {
+    return false;
+  }
+  if (/(music|applause|laughter|noise|silence)/.test(normalized)) {
+    return false;
+  }
+  const hasKeyword = VOICE_COMMAND_KEYWORDS.some((keyword) => normalized.includes(keyword));
+  if (!hasKeyword) {
+    return false;
+  }
+  const asciiLetters = (normalized.match(/[a-z]/g) ?? []).length;
+  const nonAscii = (normalized.match(/[^\x00-\x7F]/g) ?? []).length;
+  if (asciiLetters === 0 && nonAscii > 0) {
+    return false;
+  }
+  return true;
+};
 
 class VoiceController {
   private readonly simulationService = SimulationService.getInstance();
@@ -225,6 +274,21 @@ class VoiceController {
 
     const missionBefore = this.simulationService.getMission();
     const utteranceText = typeof utterance === "string" ? utterance : "";
+    const normalizedUtterance = utteranceText.toLowerCase().trim();
+
+    const hasExplicitOverrides =
+      speedMph !== undefined ||
+      gapMeters !== undefined ||
+      gapCars !== undefined ||
+      targetLane !== undefined ||
+      mode !== undefined ||
+      returnLane !== undefined ||
+      laneChangeDirection !== undefined;
+
+    if (utteranceText && !hasExplicitOverrides && source === "voice" && !isLikelyVoiceCommand(normalizedUtterance)) {
+      res.status(204).send();
+      return;
+    }
 
     const playerState = this.simulationService.getPlayerState();
     const laneCount = this.simulationService.getLaneCount();
@@ -232,7 +296,7 @@ class VoiceController {
       ? playerState.speedMph
       : (playerState.speedMps ?? 0) * MPS_TO_MPH;
 
-    if (typeof utterance === "string" && utterance.trim().length > 0) {
+    if (typeof utterance === "string" && normalizedUtterance.length > 0) {
       const parsed = parseVoiceMission(utterance, {
         currentSpeedMph,
         currentLaneIndex: playerState.laneIndex,
@@ -364,6 +428,10 @@ class VoiceController {
       const infoSummary = this.handleInformationalCommand(utteranceText, missionBefore, req.body);
       if (infoSummary) {
         res.json({ mission: missionBefore, summary: infoSummary });
+        return;
+      }
+      if (source === "voice") {
+        res.status(204).send();
         return;
       }
       res.status(400).json({ error: "No actionable mission parameters provided" });

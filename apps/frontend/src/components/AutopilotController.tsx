@@ -28,7 +28,7 @@ const computeAutopilotControl = () => {
   const currentLaneCenter = centers[clampIndex(player.laneIndex)] ?? 0;
   const targetLaneCenter = centers[targetLaneIndex] ?? currentLaneCenter;
 
-  const playerWorldX = currentLaneCenter + player.lateralOffset;
+  const playerWorldX = Number.isFinite(player.lateralOffset) ? player.lateralOffset : currentLaneCenter;
   const laneChangeRequested = targetLaneIndex !== player.laneIndex;
   const laneChangeSafe = laneChangeRequested
     ? isLaneChangeSafe(player.positionZ, targetLaneIndex, npcVehicles, player.speedMph)

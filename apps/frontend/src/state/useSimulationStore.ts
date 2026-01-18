@@ -402,6 +402,8 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     lastManualInputAt !== undefined &&
     Date.now() - lastManualInputAt < 800;
 
+  let cruiseSpeedError = 0;
+
   if (manualCruiseCancel) {
     set((currentState) => ({
       mission: {
@@ -423,6 +425,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   if (cruiseActive) {
     const targetSpeed = mission.cruiseTargetSpeedMph ?? currentSpeed;
     const speedError = targetSpeed - currentSpeed;
+    cruiseSpeedError = speedError;
 
     if (speedError > 0.4) {
       const autoThrottle = clampValue(speedError / 12, 0.12, 0.8);
@@ -496,7 +499,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       // Upshift if we're beyond the threshold with meaningful throttle
       while (
         nextGear < GEAR_STAGES.length &&
-        throttle > MIN_THROTTLE_FOR_SHIFT &&
+        (throttle > MIN_THROTTLE_FOR_SHIFT || cruiseSpeedError > 0.4) &&
         newSpeedMph > (GEAR_STAGES[nextGear - 1].upshift === Number.POSITIVE_INFINITY
           ? MAX_SPEED_MPH
           : GEAR_STAGES[nextGear - 1].upshift - SHIFT_UP_HYSTERESIS_MPH)

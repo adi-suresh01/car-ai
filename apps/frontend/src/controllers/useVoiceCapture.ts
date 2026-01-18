@@ -21,6 +21,55 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
   const chunksRef = useRef<Blob[]>([]);
   const loopTimeoutRef = useRef<number | null>(null);
 
+  const shouldSendVoiceCommand = useCallback((transcript: string) => {
+    const normalized = transcript.trim().toLowerCase();
+    if (!normalized || normalized.length < 3) {
+      return false;
+    }
+    if (!/[a-z0-9]/.test(normalized)) {
+      return false;
+    }
+    const bracketed = normalized.startsWith("(") || normalized.startsWith("[");
+    if (bracketed && (normalized.endsWith(")") || normalized.endsWith("]"))) {
+      return false;
+    }
+    const commandKeywords = [
+      "cruise",
+      "speed",
+      "mph",
+      "faster",
+      "slower",
+      "left",
+      "right",
+      "lane",
+      "overtake",
+      "gap",
+      "exit",
+      "offramp",
+      "merge",
+      "traffic",
+      "police",
+      "cop",
+      "hazard",
+      "accident",
+      "debris",
+      "camera",
+    ];
+    const hasKeyword = commandKeywords.some((keyword) => normalized.includes(keyword));
+    if (!hasKeyword) {
+      return false;
+    }
+    if (/(music|applause|laughter|noise|silence)/.test(normalized)) {
+      return false;
+    }
+    const asciiLetters = (normalized.match(/[a-z]/g) ?? []).length;
+    const nonAscii = (normalized.match(/[^\x00-\x7F]/g) ?? []).length;
+    if (asciiLetters === 0 && nonAscii > 0) {
+      return false;
+    }
+    return true;
+  }, []);
+
   const transcriptionEndpoint = options.transcriptionEndpoint ?? "/voice/transcriptions/file";
   const commandEndpoint = options.commandEndpoint ?? "/voice/command";
   const segmentMs = options.segmentMs ?? 2600;
@@ -82,12 +131,15 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
         }
         // eslint-disable-next-line no-console
         console.log("Voice transcript", data.text);
-        setLastTranscript(data.text);
-        const commandResponse = await apiClient.post<{ mission?: DrivingMissionState }>(commandEndpoint, {
-          utterance: data.text,
-        });
-        if (commandResponse?.mission) {
-          useSimulationStore.getState().applyMission(commandResponse.mission);
+        const transcript = data.text.trim();
+        setLastTranscript(transcript);
+        if (shouldSendVoiceCommand(transcript)) {
+          const commandResponse = await apiClient.post<{ mission?: DrivingMissionState }>(commandEndpoint, {
+            utterance: transcript,
+          });
+          if (commandResponse?.mission) {
+            useSimulationStore.getState().applyMission(commandResponse.mission);
+          }
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Voice capture failed";
@@ -114,7 +166,16 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     loopTimeoutRef.current = window.setTimeout(() => {
       stopRecording();
     }, segmentMs);
-  }, [commandEndpoint, transcriptionEndpoint, options.language, options.modelId, segmentMs, enabled, stopRecording]);
+  }, [
+    commandEndpoint,
+    transcriptionEndpoint,
+    options.language,
+    options.modelId,
+    segmentMs,
+    enabled,
+    stopRecording,
+    shouldSendVoiceCommand,
+  ]);
 
   const status = useMemo(
     () => (isRecording ? "recording" : isTranscribing ? "transcribing" : "idle"),
