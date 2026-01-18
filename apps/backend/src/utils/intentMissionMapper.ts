@@ -55,7 +55,7 @@ export const mapIntentToMission = (
         targetLaneIndex,
         returnLaneIndex: null,
         laneChangeDirection: "right",
-        note: intent.exitId ? `Exit intent: ${intent.exitId}` : undefined,
+        ...(intent.exitId ? { note: `Exit intent: ${intent.exitId}` } : {}),
       };
     }
     case "followVehicle": {
