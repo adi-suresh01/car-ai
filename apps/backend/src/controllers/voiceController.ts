@@ -46,9 +46,9 @@ class VoiceController {
       const result = await elevenLabsService.transcribeAudioFile({
         audioBuffer: buffer,
         mimeType: contentType,
-        filename,
-        modelId,
-        language,
+        ...(filename ? { filename } : {}),
+        ...(modelId ? { modelId } : {}),
+        ...(language ? { language } : {}),
       });
       res.json(result);
     } catch (error) {
