@@ -304,7 +304,7 @@ class VoiceController {
       }
       case "lane_change": {
         if (mission.targetLaneIndex != null) {
-          return `Changing to lane ${mission.targetLaneIndex}`;
+          return `Changing to lane ${mission.targetLaneIndex + 1}`;
         }
         return "Lane change initiated";
       }
