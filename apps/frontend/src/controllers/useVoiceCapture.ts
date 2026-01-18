@@ -64,8 +64,9 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
         const arrayBuffer = await blob.arrayBuffer();
         // eslint-disable-next-line no-console
         console.log("Voice capture", { bytes: arrayBuffer.byteLength, mimeType: recorder.mimeType });
+        const languageParam = options.language ?? "en";
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${options.language ?? ""}`,
+          `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${languageParam}`,
           {
             method: "POST",
             headers: { "Content-Type": recorder.mimeType },
