@@ -82,11 +82,11 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
         // eslint-disable-next-line no-console
         console.log("Voice transcript", data.text);
         setLastTranscript(data.text);
-        const response = await apiClient.post<{ mission?: DrivingMissionState }>(commandEndpoint, {
+        const commandResponse = await apiClient.post<{ mission?: DrivingMissionState }>(commandEndpoint, {
           utterance: data.text,
         });
-        if (response?.mission) {
-          useSimulationStore.getState().applyMission(response.mission);
+        if (commandResponse?.mission) {
+          useSimulationStore.getState().applyMission(commandResponse.mission);
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Voice capture failed";
