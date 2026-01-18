@@ -375,6 +375,12 @@ export class DrivingEnvironment {
         gapKeeping -= 0.6;
       }
     }
+    const targetLaneReached =
+      this.mission.targetLaneIndex !== null &&
+      this.mission.targetLaneIndex !== undefined &&
+      observation.laneIndex === this.mission.targetLaneIndex &&
+      Math.abs(observation.laneOffsetMeters) < 0.2;
+    const laneTargetBonus = targetLaneReached ? 0.6 : 0;
     const collisionPenalty = collision ? -25 : 0;
     const laneDisciplinePenalty = Math.abs(laneDelta) > 0.5 ? -0.2 : 0;
 
@@ -385,6 +391,7 @@ export class DrivingEnvironment {
       ruleCompliance +
       cruiseTracking +
       gapKeeping +
+      laneTargetBonus +
       collisionPenalty +
       laneDisciplinePenalty;
 
@@ -395,6 +402,7 @@ export class DrivingEnvironment {
       ruleCompliance,
       cruiseTracking,
       gapKeeping,
+      laneTargetBonus,
       collisionPenalty: collisionPenalty + laneDisciplinePenalty,
       total,
     };

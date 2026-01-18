@@ -151,6 +151,7 @@ export interface RewardBreakdown {
   ruleCompliance: number;
   cruiseTracking: number;
   gapKeeping: number;
+  laneTargetBonus: number;
   collisionPenalty: number;
   total: number;
 }
