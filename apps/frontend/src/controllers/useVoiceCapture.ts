@@ -37,7 +37,14 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
 
   const startRecording = useCallback(async () => {
     setError(undefined);
-    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    let stream: MediaStream;
+    try {
+      stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Microphone permission denied";
+      setError(message);
+      return;
+    }
     const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
     chunksRef.current = [];
 
