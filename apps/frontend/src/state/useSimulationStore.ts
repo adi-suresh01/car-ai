@@ -8,6 +8,7 @@ import type {
   VoiceStatus,
 } from "../models/simulation";
 import { simulationController } from "../controllers/simulationController";
+import { mockPlaces, mockReports } from "../data/mockMaps";
 
 const LANE_WIDTH_METERS = 3.6;
 const MPH_TO_MPS = 0.44704;
@@ -120,6 +121,7 @@ export interface PlayerDynamics {
 interface SimulationStore {
   layout?: SimulationLayoutSummary;
   npcVehicles: VehicleState[];
+  npcVehicleMap: Record<string, VehicleState>;
   isLoading: boolean;
   error?: string;
   laneCenters: number[];
@@ -130,6 +132,7 @@ interface SimulationStore {
   mission: DrivingMissionState;
   collision: boolean;
   voiceStatus?: VoiceStatus;
+  dashboard: DashboardState;
   loadLayout: () => Promise<void>;
   syncTraffic: () => Promise<void>;
   hydrateSnapshot: (snapshot: SimulationSnapshot) => void;
@@ -176,6 +179,20 @@ interface MissionUpdateInput {
   laneChangeDirection?: string;
 }
 
+type DashboardApp = "maps" | "media" | "climate" | "assistant";
+type DashboardTone = "ok" | "alert" | "info";
+
+interface DashboardState {
+  activeApp: DashboardApp;
+  headline: string;
+  detail: string;
+  tone: DashboardTone;
+  lastQuery?: string;
+  updatedAt?: number;
+  items?: string[];
+  subline?: string;
+}
+
 const resolveGearForSpeed = (speedMph: number, currentGear: number) => {
   let gear = currentGear;
   const maxGear = GEAR_STAGES.length;
@@ -206,6 +223,7 @@ const resolveGearForSpeed = (speedMph: number, currentGear: number) => {
 export const useSimulationStore = create<SimulationStore>((set, get) => ({
   layout: undefined,
   npcVehicles: [],
+  npcVehicleMap: {},
   isLoading: false,
   error: undefined,
   laneCenters: [],
@@ -215,6 +233,14 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   mission: createDefaultMission(),
   collision: false,
   voiceStatus: undefined,
+  dashboard: {
+    activeApp: "maps",
+    headline: "Navigation Ready",
+    detail: "Awaiting voice query…",
+    tone: "info",
+    items: ["US-101 South", "Next exit: Embarcadero", "ETA 18:24"],
+    subline: "Traffic: light · Clear skies",
+  },
   loadLayout: async () => {
     set({ isLoading: true, error: undefined });
     try {
@@ -246,6 +272,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         laneCenters,
         laneProfiles: [],
         npcVehicles: [],
+        npcVehicleMap: {},
         player: playerState,
         controlInput: defaultControlInput,
         mission: createDefaultMission(),
@@ -287,6 +314,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       const npcVehicles = snapshot.vehicles
         .filter((vehicle) => vehicle.id !== "player")
         .map((vehicle) => convertSnapshotVehicle(vehicle, laneCenters));
+      const npcVehicleMap = npcVehicles.reduce<Record<string, VehicleState>>((acc, vehicle) => {
+        acc[vehicle.id] = vehicle;
+        return acc;
+      }, {});
 
       const collision = Boolean(snapshot.collision);
       const voiceStatus = snapshot.voiceStatus ?? state.voiceStatus;
@@ -294,11 +325,13 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         // eslint-disable-next-line no-console
         console.warn("Collision detected in simulation snapshot");
       }
+      const dashboard = deriveDashboardState(voiceStatus, state.dashboard);
 
       return {
         laneCenters,
         laneProfiles: snapshot.lanes,
         npcVehicles,
+        npcVehicleMap,
         player: {
           ...state.player,
           laneCenter: laneCenters[state.player.laneIndex] ?? state.player.laneCenter,
@@ -306,6 +339,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         mission: snapshot.mission ?? state.mission ?? createDefaultMission(),
         collision,
         voiceStatus,
+        dashboard,
         lastSyncTimestamp: snapshot.timestamp,
       };
     });
@@ -508,10 +542,15 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         position: [laneCenter, 0, nextZ] as [number, number, number],
       };
     });
+    const npcVehicleMap = updatedNpcVehicles.reduce<Record<string, VehicleState>>((acc, vehicle) => {
+      acc[vehicle.id] = vehicle;
+      return acc;
+    }, {});
 
     set({
       player: updatedPlayer,
       npcVehicles: updatedNpcVehicles,
+      npcVehicleMap,
       laneCenters: recalculatedLaneCenters,
       collision,
     });
@@ -524,3 +563,223 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     set({ mission });
   },
 }));
+
+const deriveDashboardState = (
+  voiceStatus: VoiceStatus | undefined,
+  previous: DashboardState,
+): DashboardState => {
+  if (!voiceStatus?.lastUtterance && !voiceStatus?.summary) {
+    return previous;
+  }
+  const utterance = (voiceStatus.lastUtterance ?? "").toLowerCase();
+  const summary = (voiceStatus.summary ?? "").toLowerCase();
+  const combined = `${utterance} ${summary}`.trim();
+  if (!combined) {
+    return previous;
+  }
+
+  let activeApp: DashboardApp = previous.activeApp;
+  if (combined.includes("map") || combined.includes("navigate") || combined.includes("route")) {
+    activeApp = "maps";
+  } else if (combined.includes("music") || combined.includes("playlist") || combined.includes("spotify")) {
+    activeApp = "media";
+  } else if (combined.includes("temperature") || combined.includes("climate") || combined.includes("ac")) {
+    activeApp = "climate";
+  } else if (combined.includes("assistant") || combined.includes("help")) {
+    activeApp = "assistant";
+  }
+
+  const mentionsCops = combined.includes("cops") || combined.includes("police") || combined.includes("speed trap");
+  const mentionsTraffic = combined.includes("traffic") || combined.includes("slowdown") || combined.includes("delay");
+  const mentionsHazard = combined.includes("hazard") || combined.includes("debris") || combined.includes("accident");
+  const mentionsCamera = combined.includes("camera") || combined.includes("speed camera");
+  const mentionsCharging = combined.includes("charging") || combined.includes("charger");
+  const mentionsCoffee = combined.includes("coffee") || combined.includes("cafe");
+  const mentionsRest = combined.includes("rest") || combined.includes("rest area");
+
+  if (mentionsCops || mentionsCamera || mentionsTraffic || mentionsHazard) {
+    const filtered = mockReports.filter((report) => {
+      if (mentionsCops) return report.type === "police";
+      if (mentionsCamera) return report.type === "camera";
+      if (mentionsTraffic) return report.type === "traffic";
+      if (mentionsHazard) return report.type === "hazard";
+      return false;
+    });
+    const withinFive = filtered.filter((report) => report.distanceMiles <= 5);
+    const items = withinFive.map((report) => `${report.distanceMiles.toFixed(1)} mi · ${report.description}`);
+    const headline = mentionsCops ? "Law Enforcement" : mentionsCamera ? "Speed Cameras" : mentionsTraffic ? "Traffic" : "Road Hazards";
+
+    return {
+      activeApp: "maps",
+      headline,
+      detail: items.length > 0 ? "Reports found ahead." : "No reports in the next 5 miles.",
+      tone: items.length > 0 ? "alert" : "ok",
+      items: items.length > 0 ? items : ["Continue on route · No alerts"],
+      subline: "Data refreshed moments ago",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (mentionsCharging || mentionsCoffee || mentionsRest) {
+    const filtered = mockPlaces.filter((place) => {
+      if (mentionsCharging) return place.type === "charging";
+      if (mentionsCoffee) return place.type === "coffee";
+      if (mentionsRest) return place.type === "rest";
+      return false;
+    });
+    const items = filtered.map((place) => `${place.name} · ${place.distanceMiles.toFixed(1)} mi`);
+    const headline = mentionsCharging ? "Charging Stations" : mentionsCoffee ? "Coffee Stops" : "Rest Areas";
+    return {
+      activeApp: "maps",
+      headline,
+      detail: items.length > 0 ? "Top nearby matches." : "No matches nearby.",
+      tone: items.length > 0 ? "info" : "ok",
+      items: items.length > 0 ? items : ["Continue on route"],
+      subline: "Swipe to add waypoint",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (combined.includes("weather")) {
+    return {
+      activeApp: "maps",
+      headline: "Weather Ahead",
+      detail: "Clear skies · 68°F · Light coastal breeze.",
+      tone: "info",
+      items: ["Visibility 10 mi", "Wind W 6 mph", "No precipitation"],
+      subline: "Updated 2 min ago",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (combined.includes("exit") || combined.includes("eta")) {
+    return {
+      activeApp: "maps",
+      headline: "Route Status",
+      detail: "Next exit: Embarcadero · 1.2 mi",
+      tone: "info",
+      items: ["ETA 18:24", "Arrive in 14 min", "Speed steady"],
+      subline: "Navigation active",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (combined.includes("call") || combined.includes("message")) {
+    return {
+      activeApp: "assistant",
+      headline: "Assistant",
+      detail: "Messaging is not connected yet.",
+      tone: "info",
+      items: ["Try: \"Play music\" or \"Check traffic\""],
+      subline: "Voice integration placeholder",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (combined.includes("music") || combined.includes("song") || combined.includes("play")) {
+    return {
+      activeApp: "media",
+      headline: "Now Playing",
+      detail: "Synthwave Drive · 84 BPM",
+      tone: "info",
+      items: ["Next: Midnight Run", "Volume 68%", "Mode: Focus"],
+      subline: "Playback synced",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (combined.includes("temperature") || combined.includes("climate") || combined.includes("ac")) {
+    return {
+      activeApp: "climate",
+      headline: "Climate",
+      detail: "Cabin temp set to 70°F · Auto fan.",
+      tone: "info",
+      items: ["Rear vents: on", "Seat heat: low", "Air quality: good"],
+      subline: "Auto comfort enabled",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (combined.includes("assistant") || combined.includes("help")) {
+    return {
+      activeApp: "assistant",
+      headline: "Assistant",
+      detail: "Say a command to control navigation, media, or climate.",
+      tone: "info",
+      items: ["\"Any cops ahead?\"", "\"Find charging\"", "\"Play music\""],
+      subline: "Listening…",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (combined.includes("cops") || combined.includes("police") || combined.includes("speed trap")) {
+    return {
+      activeApp: "maps",
+      headline: "Live Reports",
+      detail: "No reports of patrols in the next 5 miles.",
+      tone: "ok",
+      items: ["Continue on route · No alerts"],
+      subline: "Reports updated just now",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (combined.includes("traffic") || combined.includes("slowdown")) {
+    return {
+      activeApp: "maps",
+      headline: "Traffic Ahead",
+      detail: "Moderate congestion 2.3 miles ahead · 4 min delay.",
+      tone: "alert",
+      items: ["Consider lane change", "Current speed 58 mph"],
+      subline: "Traffic sensor feed",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (activeApp === "media") {
+    return {
+      activeApp,
+      headline: "Now Playing",
+      detail: "Synthwave Drive · 84 BPM",
+      tone: "info",
+      items: ["Next: Midnight Run", "Volume 68%"],
+      subline: "Playback synced",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  if (activeApp === "climate") {
+    return {
+      activeApp,
+      headline: "Climate",
+      detail: "Cabin temp set to 70°F · Auto fan.",
+      tone: "info",
+      items: ["Rear vents: on", "Seat heat: low"],
+      subline: "Auto comfort enabled",
+      lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+      updatedAt: Date.now(),
+    };
+  }
+
+  return {
+    activeApp,
+    headline: "Assistant",
+    detail: voiceStatus.summary ?? previous.detail,
+    tone: "info",
+    items: previous.items,
+    subline: previous.subline,
+    lastQuery: voiceStatus.lastUtterance ?? previous.lastQuery,
+    updatedAt: Date.now(),
+  };
+};

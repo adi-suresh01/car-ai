@@ -2,6 +2,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Suspense, useMemo, useRef } from "react";
 import { Color, Group, MathUtils, Mesh } from "three";
 import { useSimulationStore, buildVehicleList } from "../../state/useSimulationStore";
+import type { VehicleState } from "../../models/simulation";
 
 const LANE_WIDTH_METERS = 3.6;
 const STRIPE_COUNT = 48;
@@ -16,8 +17,8 @@ const TopDownRoad = () => {
     () => laneCenters.slice(0, -1).map((center, index) => (center + laneCenters[index + 1]) / 2),
     [laneCenters],
   );
-  const baseColor = useMemo(() => new Color("#3b404d"), []);
-  const shoulderColor = useMemo(() => new Color("#252932"), []);
+  const baseColor = useMemo(() => new Color("#2f3441"), []);
+  const shoulderColor = useMemo(() => new Color("#1d2028"), []);
   const groupRef = useRef<Group>(null);
   const stripeRefs = useRef<Mesh[][]>([]);
   const roadLength = STRIPE_COUNT * STRIPE_SPACING_METERS;
@@ -45,19 +46,19 @@ const TopDownRoad = () => {
 
   return (
     <group ref={groupRef}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[roadWidth + 8, roadLength]} />
         <meshStandardMaterial color={shoulderColor} />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]} receiveShadow>
         <planeGeometry args={[roadWidth + 2, roadLength]} />
         <meshStandardMaterial color={baseColor} roughness={0.84} metalness={0.04} />
       </mesh>
       {laneCenters.map((center, index) => (
-        <mesh key={`lane-shade-${center}`} rotation={[-Math.PI / 2, 0, 0]} position={[center, 0.025, 0]}>
+        <mesh key={`lane-shade-${center}`} rotation={[-Math.PI / 2, 0, 0]} position={[center, 0.025, 0]} receiveShadow>
           <planeGeometry args={[LANE_WIDTH_METERS, roadLength]} />
           <meshStandardMaterial
-            color={index % 2 === 0 ? "#404654" : "#343a47"}
+            color={index % 2 === 0 ? "#3a4050" : "#323747"}
             roughness={0.86}
             metalness={0.02}
           />
@@ -79,6 +80,7 @@ const TopDownRoad = () => {
                   stripeRefs.current[dividerIdx][index] = instance;
                 }
               }}
+              receiveShadow
             >
               <planeGeometry args={[0.24, STRIPE_SPACING_METERS * 0.5]} />
               <meshBasicMaterial color="#fafbff" />
@@ -87,16 +89,16 @@ const TopDownRoad = () => {
         </group>
       ))}
       {[ -1, 1 ].map((side) => (
-        <mesh key={`edge-${side}`} position={[side * (roadWidth / 2), 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <mesh key={`edge-${side}`} position={[side * (roadWidth / 2), 0.035, 0]} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
           <planeGeometry args={[0.26, roadLength]} />
           <meshBasicMaterial color="#dde1ea" />
         </mesh>
       ))}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[laneCenters[0] - LANE_WIDTH_METERS / 2 - 0.2, 0.036, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[laneCenters[0] - LANE_WIDTH_METERS / 2 - 0.2, 0.036, 0]} receiveShadow>
         <planeGeometry args={[0.2, roadLength]} />
         <meshBasicMaterial color="#f4d35e" />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[laneCenters[laneCount - 1] + LANE_WIDTH_METERS / 2 + 0.2, 0.036, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[laneCenters[laneCount - 1] + LANE_WIDTH_METERS / 2 + 0.2, 0.036, 0]} receiveShadow>
         <planeGeometry args={[0.2, roadLength]} />
         <meshBasicMaterial color="#f4d35e" />
       </mesh>
@@ -104,27 +106,21 @@ const TopDownRoad = () => {
   );
 };
 
-const VehicleMarker = ({
-  vehicleId,
-  color,
-  isPlayer,
-}: {
-  vehicleId: string;
-  color: string;
-  isPlayer?: boolean;
-}) => {
+const VehicleMarker = ({ vehicleId, isPlayer, color }: { vehicleId: string; isPlayer?: boolean; color: string }) => {
   const meshRef = useRef<Mesh>(null);
 
   useFrame(() => {
-    const { npcVehicles, player } = useSimulationStore.getState();
+    const { npcVehicleMap, player } = useSimulationStore.getState();
     if (!meshRef.current) return;
-    const vehicle = npcVehicles.find((candidate) => candidate.id === vehicleId);
+    if (isPlayer) {
+      meshRef.current.position.set(0, 0.3, 0);
+      return;
+    }
+    const vehicle = npcVehicleMap[vehicleId];
     if (!vehicle || !vehicle.position) return;
     const vehicleWorldX = vehicle.position[0] ?? 0;
     const vehicleWorldZ = vehicle.position[2] ?? 0;
-    const playerWorldX = Number.isFinite(player.lateralOffset)
-      ? player.lateralOffset
-      : player.laneCenter;
+    const playerWorldX = Number.isFinite(player.lateralOffset) ? player.lateralOffset : player.laneCenter;
     const relativeX = vehicleWorldX - playerWorldX;
     const relativeZ = -(vehicleWorldZ - player.positionZ);
     if (!Number.isFinite(relativeX) || !Number.isFinite(relativeZ)) return;
@@ -151,16 +147,16 @@ const TopDownScene = () => {
 
   return (
     <>
-      <color attach="background" args={["#0d0f17"]} />
-      <ambientLight intensity={0.74} color="#f1f6ff" />
-      <hemisphereLight intensity={0.28} groundColor={new Color("#1b1e28")} color={new Color("#edf4ff")} />
-      <directionalLight position={[6, 18, 8]} intensity={0.9} color="#f6f9ff" />
+      <color attach="background" args={["#0c0f18"]} />
+      <ambientLight intensity={0.7} color="#f2f6ff" />
+      <hemisphereLight intensity={0.32} groundColor={new Color("#1b1e28")} color={new Color("#edf4ff")} />
+      <directionalLight position={[6, 18, 8]} intensity={0.9} color="#f6f9ff" castShadow />
       <TopDownRoad />
-      {vehicles.map((vehicle) => (
+      {vehicles.map((vehicle: VehicleState) => (
         <VehicleMarker
           key={vehicle.id}
           vehicleId={vehicle.id}
-          color={vehicle.id === "player" ? "#00aaff" : "#f25f5c"}
+          color={vehicle.id === "player" ? "#00b7ff" : "#f25f5c"}
           isPlayer={vehicle.id === "player"}
         />
       ))}
