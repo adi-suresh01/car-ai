@@ -3,6 +3,9 @@ import { useSimulationStore } from "../state/useSimulationStore";
 
 const LANE_WIDTH = 3.6;
 const CAR_LENGTH = 4.6;
+const SAFE_GAP_AHEAD_METERS = 16;
+const SAFE_GAP_BEHIND_METERS = 12;
+const MAX_RELATIVE_APPROACH_MPS = 6;
 
 const clamp = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
 
@@ -26,7 +29,11 @@ const computeAutopilotControl = () => {
   const targetLaneCenter = centers[targetLaneIndex] ?? currentLaneCenter;
 
   const playerWorldX = currentLaneCenter + player.lateralOffset;
-  const laneError = targetLaneCenter - playerWorldX;
+  const laneChangeRequested = targetLaneIndex !== player.laneIndex;
+  const laneChangeSafe = laneChangeRequested
+    ? isLaneChangeSafe(player.positionZ, targetLaneIndex, npcVehicles, player.speedMph)
+    : true;
+  const laneError = laneChangeSafe ? targetLaneCenter - playerWorldX : currentLaneCenter - playerWorldX;
   const steering = clamp(laneError / (LANE_WIDTH * 0.5), -1, 1);
 
   const defaultTargetSpeed = Math.max(player.speedMph, 35);
@@ -64,6 +71,50 @@ const computeAutopilotControl = () => {
   }
 
   return { steering, throttle, brake };
+};
+
+const isLaneChangeSafe = (
+  playerZ: number,
+  targetLaneIndex: number,
+  npcVehicles: {
+    laneIndex: number;
+    position?: [number, number, number];
+    speedMps?: number;
+    lengthMeters?: number;
+  }[],
+  playerSpeedMph: number,
+) => {
+  const candidates = npcVehicles
+    .filter((vehicle) => vehicle.laneIndex === targetLaneIndex && vehicle.position)
+    .map((vehicle) => ({
+      z: vehicle.position?.[2] ?? 0,
+      speedMps: vehicle.speedMps ?? (playerSpeedMph * 0.44704),
+      lengthMeters: vehicle.lengthMeters ?? CAR_LENGTH,
+    }));
+
+  const ahead = candidates
+    .filter((vehicle) => vehicle.z > playerZ)
+    .sort((a, b) => a.z - b.z)[0];
+  const behind = candidates
+    .filter((vehicle) => vehicle.z < playerZ)
+    .sort((a, b) => b.z - a.z)[0];
+
+  if (ahead) {
+    const gapAhead = ahead.z - playerZ - ahead.lengthMeters * 0.5;
+    if (gapAhead < SAFE_GAP_AHEAD_METERS) {
+      return false;
+    }
+  }
+
+  if (behind) {
+    const gapBehind = playerZ - behind.z - behind.lengthMeters * 0.5;
+    const relativeApproach = behind.speedMps - (playerSpeedMph * 0.44704);
+    if (gapBehind < SAFE_GAP_BEHIND_METERS || relativeApproach > MAX_RELATIVE_APPROACH_MPS) {
+      return false;
+    }
+  }
+
+  return true;
 };
 
 const AutopilotController = ({ enabled = true }: { enabled?: boolean }) => {
