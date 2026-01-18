@@ -120,6 +120,14 @@ export interface DrivingObservation {
   gapBehindMeters: number;
   relativeSpeedAheadMps: number;
   relativeSpeedBehindMps: number;
+  leftGapAheadMeters?: number;
+  leftGapBehindMeters?: number;
+  leftRelativeSpeedAheadMps?: number;
+  leftRelativeSpeedBehindMps?: number;
+  rightGapAheadMeters?: number;
+  rightGapBehindMeters?: number;
+  rightRelativeSpeedAheadMps?: number;
+  rightRelativeSpeedBehindMps?: number;
   targetLaneIndex?: number;
   distanceToMergePointMeters?: number;
   missionMode?: DrivingMissionMode;

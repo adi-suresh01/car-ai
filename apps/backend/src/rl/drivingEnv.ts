@@ -293,16 +293,25 @@ export class DrivingEnvironment {
   }
 
   private buildObservation(): DrivingObservation {
-    const laneVehicles = this.traffic
-      .filter((vehicle) => vehicle.laneIndex === this.ego.laneIndex)
-      .sort((a, b) => a.positionZ - b.positionZ);
-
-    const ahead = laneVehicles.find((vehicle) => vehicle.positionZ > this.ego.positionZ);
-    const behind = [...laneVehicles].reverse().find((vehicle) => vehicle.positionZ < this.ego.positionZ);
+    const laneVehicles = (laneIndex: number) =>
+      this.traffic.filter((vehicle) => vehicle.laneIndex === laneIndex).sort((a, b) => a.positionZ - b.positionZ);
+    const currentLaneVehicles = laneVehicles(this.ego.laneIndex);
+    const ahead = currentLaneVehicles.find((vehicle) => vehicle.positionZ > this.ego.positionZ);
+    const behind = [...currentLaneVehicles].reverse().find((vehicle) => vehicle.positionZ < this.ego.positionZ);
+    const leftLaneVehicles = laneVehicles(this.ego.laneIndex - 1);
+    const rightLaneVehicles = laneVehicles(this.ego.laneIndex + 1);
+    const leftAhead = leftLaneVehicles.find((vehicle) => vehicle.positionZ > this.ego.positionZ);
+    const leftBehind = [...leftLaneVehicles].reverse().find((vehicle) => vehicle.positionZ < this.ego.positionZ);
+    const rightAhead = rightLaneVehicles.find((vehicle) => vehicle.positionZ > this.ego.positionZ);
+    const rightBehind = [...rightLaneVehicles].reverse().find((vehicle) => vehicle.positionZ < this.ego.positionZ);
     const laneProfile = this.laneProfiles[this.ego.laneIndex] ?? this.laneProfiles[0] ?? FALLBACK_LANE_PROFILE;
 
     const gapAhead = ahead ? ahead.positionZ - this.ego.positionZ - ahead.lengthMeters * 0.5 : 120;
     const gapBehind = behind ? this.ego.positionZ - behind.positionZ - behind.lengthMeters * 0.5 : 120;
+    const leftGapAhead = leftAhead ? leftAhead.positionZ - this.ego.positionZ - leftAhead.lengthMeters * 0.5 : 120;
+    const leftGapBehind = leftBehind ? this.ego.positionZ - leftBehind.positionZ - leftBehind.lengthMeters * 0.5 : 120;
+    const rightGapAhead = rightAhead ? rightAhead.positionZ - this.ego.positionZ - rightAhead.lengthMeters * 0.5 : 120;
+    const rightGapBehind = rightBehind ? this.ego.positionZ - rightBehind.positionZ - rightBehind.lengthMeters * 0.5 : 120;
 
     const observation: DrivingObservation = {
       laneIndex: this.ego.laneIndex,
@@ -315,6 +324,14 @@ export class DrivingEnvironment {
       gapBehindMeters: gapBehind,
       relativeSpeedAheadMps: ahead ? ahead.speedMps - this.ego.speedMps : 0,
       relativeSpeedBehindMps: behind ? behind.speedMps - this.ego.speedMps : 0,
+      leftGapAheadMeters: leftGapAhead,
+      leftGapBehindMeters: leftGapBehind,
+      leftRelativeSpeedAheadMps: leftAhead ? leftAhead.speedMps - this.ego.speedMps : 0,
+      leftRelativeSpeedBehindMps: leftBehind ? leftBehind.speedMps - this.ego.speedMps : 0,
+      rightGapAheadMeters: rightGapAhead,
+      rightGapBehindMeters: rightGapBehind,
+      rightRelativeSpeedAheadMps: rightAhead ? rightAhead.speedMps - this.ego.speedMps : 0,
+      rightRelativeSpeedBehindMps: rightBehind ? rightBehind.speedMps - this.ego.speedMps : 0,
     };
     if (this.mission.targetLaneIndex !== null && this.mission.targetLaneIndex !== undefined) {
       observation.targetLaneIndex = this.mission.targetLaneIndex;
