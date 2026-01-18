@@ -6,6 +6,7 @@ import { logger } from "../utils/logger";
 import type { DrivingMissionSnapshot, DrivingMissionUpdate } from "../models/simulation";
 import { parseVoiceMission } from "../utils/voiceCommandParser";
 import { intentLogger } from "../utils/intentLogger";
+import { mapIntentToMission } from "../utils/intentMissionMapper";
 
 const MPS_TO_MPH = 1 / 0.44704;
 
@@ -66,7 +67,42 @@ class VoiceController {
 
     try {
       const result = await fireworksService.generateIntent({ transcript, context });
-      res.json(result);
+      const playerState = this.simulationService.getPlayerState();
+      const laneCount = this.simulationService.getLaneCount();
+      const patch = mapIntentToMission(result.intent, {
+        currentLaneIndex: playerState.laneIndex,
+        laneCount,
+      });
+
+      if (!patch) {
+        res.json(result);
+        return;
+      }
+
+      try {
+        const missionBefore = this.simulationService.getMission();
+        const mission = this.simulationService.updateMission({
+          ...patch,
+          source: "intent",
+        });
+        const summary = this.buildVoiceSummary(mission, patch);
+        this.simulationService.updateVoiceStatus({
+          lastUtterance: transcript,
+          summary,
+          mode: mission.mode,
+        });
+        void intentLogger.log({
+          timestamp: new Date().toISOString(),
+          utterance: transcript,
+          requestPayload: req.body,
+          missionBefore,
+          missionAfter: mission,
+        });
+        res.json({ ...result, mission, summary });
+      } catch (error) {
+        const message = error instanceof Error ? error.message : "Failed to apply intent";
+        res.status(400).json({ error: message, intent: result.intent });
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
       res.status(500).json({ error: message });
