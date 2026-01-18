@@ -321,9 +321,12 @@ export class DrivingEnvironment {
       const profile = this.laneProfiles[vehicle.laneIndex] ?? FALLBACK_LANE_PROFILE;
       const densityFactor = Math.min(1.6, Math.max(0.6, profile.spawnRatePerMinute / 20));
       const densityJitter = jitter * densityFactor;
+      const laneTargetMps = mphToMps(profile.targetSpeedMph);
+      const speedOffset = Math.max(0, vehicle.speedMps - laneTargetMps);
+      const overtakeBuffer = speedOffset * 12;
       const tailZ = laneTailZ.get(vehicle.laneIndex) ?? TRAFFIC_RESPAWN_Z;
       const respawnZ = Math.min(
-        TRAFFIC_RESPAWN_Z - densityJitter,
+        TRAFFIC_RESPAWN_Z - densityJitter - overtakeBuffer,
         tailZ - profile.preferredSpacingMeters - vehicle.lengthMeters * 0.5,
       );
       return {
