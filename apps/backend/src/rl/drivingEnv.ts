@@ -15,6 +15,9 @@ import { SimulationService } from "../services/simulationService";
 
 const MPH_TO_MPS = 0.44704;
 const LANE_WIDTH_METERS = 3.6;
+const TRAFFIC_DESPAWN_Z = 1200;
+const TRAFFIC_RESPAWN_Z = -320;
+const TRAFFIC_RESPAWN_JITTER = 180;
 
 const mphToMps = (mph: number) => mph * MPH_TO_MPS;
 const mpsToMph = (mps: number) => mps / MPH_TO_MPS;
@@ -239,11 +242,20 @@ export class DrivingEnvironment {
   }
 
   private updateTraffic(dt: number) {
-    this.traffic = this.traffic.map((vehicle) => ({
-      ...vehicle,
-      positionZ: vehicle.positionZ + vehicle.speedMps * dt,
-    }));
-    this.traffic = this.traffic.filter((vehicle) => vehicle.positionZ < 1200);
+    this.traffic = this.traffic.map((vehicle) => {
+      const nextZ = vehicle.positionZ + vehicle.speedMps * dt;
+      if (nextZ <= TRAFFIC_DESPAWN_Z) {
+        return {
+          ...vehicle,
+          positionZ: nextZ,
+        };
+      }
+      const jitter = Math.random() * TRAFFIC_RESPAWN_JITTER;
+      return {
+        ...vehicle,
+        positionZ: TRAFFIC_RESPAWN_Z - jitter,
+      };
+    });
   }
 
   private detectCollision(): boolean {
