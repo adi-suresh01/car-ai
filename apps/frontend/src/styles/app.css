@@ -582,12 +582,13 @@
 
 .dashboard-console {
   position: absolute;
-  left: 50%;
-  bottom: 12%;
-  width: 420px;
+  left: 52%;
+  bottom: 18%;
+  width: 300px;
+  max-width: 34vw;
   transform: translateX(-50%);
-  padding: 18px 20px;
-  border-radius: 20px;
+  padding: 12px 14px;
+  border-radius: 16px;
   background: linear-gradient(170deg, rgba(20, 26, 38, 0.96), rgba(12, 16, 26, 0.94));
   box-shadow: 0 26px 60px rgba(5, 8, 18, 0.55);
   border: 1px solid rgba(70, 94, 140, 0.4);
@@ -599,7 +600,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
 .dashboard-app {
@@ -610,8 +611,8 @@
 }
 
 .dashboard-subtitle {
-  margin-top: 4px;
-  font-size: 0.95rem;
+  margin-top: 2px;
+  font-size: 0.8rem;
   color: rgba(236, 243, 255, 0.92);
 }
 
@@ -637,17 +638,17 @@
 
 .dashboard-main {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .dashboard-headline {
-  font-size: 1.1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   color: #f4f8ff;
 }
 
 .dashboard-detail {
-  font-size: 0.95rem;
+  font-size: 0.82rem;
   line-height: 1.4;
   color: rgba(196, 210, 236, 0.9);
 }
@@ -657,14 +658,14 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 6px;
-  font-size: 0.82rem;
+  gap: 4px;
+  font-size: 0.72rem;
   color: rgba(210, 224, 246, 0.92);
 }
 
 .dashboard-list li {
-  padding: 6px 10px;
-  border-radius: 10px;
+  padding: 5px 8px;
+  border-radius: 8px;
   background: rgba(36, 48, 72, 0.5);
   border: 1px solid rgba(70, 94, 140, 0.25);
 }
@@ -677,18 +678,18 @@
 }
 
 .dashboard-voice {
-  margin-top: 8px;
+  margin-top: 6px;
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 0.75rem;
+  font-size: 0.64rem;
   text-transform: uppercase;
   letter-spacing: 0.16em;
   color: rgba(150, 168, 200, 0.85);
 }
 
 .dashboard-voice strong {
-  font-size: 0.9rem;
+  font-size: 0.78rem;
   text-transform: none;
   letter-spacing: 0.02em;
   color: rgba(230, 238, 252, 0.95);
@@ -730,19 +731,19 @@
 }
 
 .dashboard-footer {
-  margin-top: 14px;
+  margin-top: 10px;
   display: grid;
   grid-template-columns: repeat(4, 1fr);
-  gap: 8px;
+  gap: 6px;
 }
 
 .dashboard-pill {
-  padding: 6px 8px;
-  border-radius: 12px;
+  padding: 4px 6px;
+  border-radius: 10px;
   background: rgba(45, 58, 86, 0.65);
-  font-size: 0.68rem;
+  font-size: 0.58rem;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
+  letter-spacing: 0.14em;
   text-align: center;
   color: rgba(216, 228, 248, 0.88);
 }
