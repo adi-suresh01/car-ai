@@ -1,0 +1,10 @@
+{
+  "id": "training-default",
+  "seed": 90210,
+  "mission": {
+    "mode": "cruise",
+    "cruiseTargetSpeedMph": 60,
+    "cruiseGapMeters": 36,
+    "targetLaneIndex": 2
+  }
+}
