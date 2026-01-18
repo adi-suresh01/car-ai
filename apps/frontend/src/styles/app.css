@@ -690,6 +690,41 @@
   color: rgba(230, 238, 252, 0.95);
 }
 
+.dashboard-history {
+  margin-top: 10px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: rgba(150, 168, 200, 0.85);
+}
+
+.dashboard-history ul {
+  margin: 6px 0 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 6px;
+  font-size: 0.78rem;
+  text-transform: none;
+  letter-spacing: 0.02em;
+  color: rgba(210, 224, 246, 0.9);
+}
+
+.dashboard-history li {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 6px 8px;
+  border-radius: 10px;
+  background: rgba(24, 32, 48, 0.6);
+}
+
+.dashboard-history em {
+  font-style: normal;
+  font-size: 0.74rem;
+  color: rgba(178, 196, 226, 0.8);
+}
+
 .dashboard-footer {
   margin-top: 14px;
   display: grid;

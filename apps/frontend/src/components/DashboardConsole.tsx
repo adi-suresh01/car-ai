@@ -4,6 +4,7 @@ import { useSimulationStore } from "../state/useSimulationStore";
 const DashboardConsole = () => {
   const dashboard = useSimulationStore((state) => state.dashboard);
   const voiceStatus = useSimulationStore((state) => state.voiceStatus);
+  const voiceHistory = useSimulationStore((state) => state.voiceHistory);
 
   const subtitle = useMemo(() => {
     if (dashboard.activeApp === "maps") {
@@ -42,6 +43,19 @@ const DashboardConsole = () => {
           <span>Last voice</span>
           <strong>{voiceStatus?.lastUtterance ?? "Say a command to begin"}</strong>
         </div>
+        {voiceHistory.length > 0 ? (
+          <div className="dashboard-history">
+            <span>History</span>
+            <ul>
+              {voiceHistory.map((entry) => (
+                <li key={`${entry.utterance}-${entry.timestamp ?? ""}`}>
+                  <strong>{entry.utterance}</strong>
+                  {entry.summary ? <em>{entry.summary}</em> : null}
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
       </div>
       <div className="dashboard-footer">
         <div className="dashboard-pill">Navigation</div>

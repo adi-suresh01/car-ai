@@ -131,6 +131,7 @@ interface SimulationStore {
   mission: DrivingMissionState;
   collision: boolean;
   voiceStatus?: VoiceStatus;
+  voiceHistory: Array<{ utterance: string; summary?: string; timestamp?: number }>;
   dashboard: DashboardState;
   loadLayout: () => Promise<void>;
   syncTraffic: () => Promise<void>;
@@ -232,6 +233,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   mission: createDefaultMission(),
   collision: false,
   voiceStatus: undefined,
+  voiceHistory: [],
   dashboard: {
     activeApp: "maps",
     headline: "Navigation Ready",
@@ -320,6 +322,20 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
 
       const collision = Boolean(snapshot.collision);
       const voiceStatus = snapshot.voiceStatus ?? state.voiceStatus;
+      const isNewVoice =
+        voiceStatus?.timestamp !== undefined &&
+        voiceStatus?.timestamp !== state.voiceStatus?.timestamp &&
+        typeof voiceStatus?.lastUtterance === "string";
+      const voiceHistory = isNewVoice
+        ? [
+            {
+              utterance: voiceStatus?.lastUtterance ?? "",
+              summary: voiceStatus?.summary,
+              timestamp: voiceStatus?.timestamp,
+            },
+            ...state.voiceHistory,
+          ].slice(0, 6)
+        : state.voiceHistory;
       if (collision && !state.collision) {
         // eslint-disable-next-line no-console
         console.warn("Collision detected in simulation snapshot");
@@ -338,6 +354,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
         mission: snapshot.mission ?? state.mission ?? createDefaultMission(),
         collision,
         voiceStatus,
+        voiceHistory,
         dashboard,
         lastSyncTimestamp: snapshot.timestamp,
       };
