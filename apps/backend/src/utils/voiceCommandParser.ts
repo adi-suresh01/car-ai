@@ -108,7 +108,8 @@ export const parseVoiceMission = (
 
   if (isSpeedIncrease || isSpeedDecrease) {
     const deltaMatch = utterance.match(DELTA_REGEX);
-    const deltaMph = deltaMatch ? Number.parseFloat(deltaMatch[1]) : 5;
+    const deltaValue = deltaMatch?.[1];
+    const deltaMph = deltaValue ? Number.parseFloat(deltaValue) : 5;
     const signedDelta = isSpeedIncrease ? Math.abs(deltaMph) : -Math.abs(deltaMph);
     const nextSpeed = Math.max(0, currentSpeedMph + signedDelta);
     return {
