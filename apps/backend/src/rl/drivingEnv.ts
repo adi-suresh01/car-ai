@@ -287,6 +287,7 @@ export class DrivingEnvironment {
     const done = collision || this.elapsedSeconds >= this.config.maxEpisodeSeconds;
     const snapshot = this.buildSnapshot(collision);
     const laneChanged = this.ego.laneIndex !== previousLaneIndex ? 1 : 0;
+    const laneDensities = this.computeLaneDensities();
 
     return {
       observation,
@@ -296,6 +297,7 @@ export class DrivingEnvironment {
         collisions: collision ? 1 : 0,
         laneChanges: laneChanged,
         elapsedSeconds: this.elapsedSeconds,
+        laneDensities,
         snapshot,
       },
     };
@@ -523,6 +525,16 @@ export class DrivingEnvironment {
       mission: this.buildMissionSnapshot(),
       collision,
     };
+  }
+
+  private computeLaneDensities(): number[] {
+    const densities = Array.from({ length: this.laneProfiles.length }, () => 0);
+    this.traffic.forEach((vehicle) => {
+      if (densities[vehicle.laneIndex] !== undefined) {
+        densities[vehicle.laneIndex] += 1;
+      }
+    });
+    return densities;
   }
 
   private buildMissionSnapshot(): DrivingMissionSnapshot {

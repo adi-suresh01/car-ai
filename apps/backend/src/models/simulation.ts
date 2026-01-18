@@ -160,6 +160,7 @@ export interface StepTelemetry {
   collisions: number;
   laneChanges: number;
   elapsedSeconds: number;
+  laneDensities?: number[];
 }
 
 export interface DrivingStepResult {
