@@ -19,6 +19,8 @@ const LANE_WIDTH_METERS = 3.6;
 const TRAFFIC_DESPAWN_Z = 1200;
 const TRAFFIC_RESPAWN_Z = -320;
 const TRAFFIC_RESPAWN_JITTER = 180;
+const EGO_LENGTH_METERS = 4.5;
+const EGO_WIDTH_METERS = 1.9;
 
 const mphToMps = (mph: number) => mph * MPH_TO_MPS;
 const mpsToMph = (mps: number) => mps / MPH_TO_MPS;
@@ -281,14 +283,14 @@ export class DrivingEnvironment {
   }
 
   private detectCollision(): boolean {
-    const egoHalfLength = 2.3;
-    const egoHalfWidth = 0.9;
+    const egoHalfLength = EGO_LENGTH_METERS * 0.5;
+    const egoHalfWidth = EGO_WIDTH_METERS * 0.5;
     return this.traffic.some((vehicle) => {
       if (vehicle.laneIndex !== this.ego.laneIndex) return false;
       const longitudinalGap = Math.abs(vehicle.positionZ - this.ego.positionZ);
-      if (longitudinalGap > egoHalfLength + vehicle.lengthMeters * 0.5 + 3) return false;
+      if (longitudinalGap > egoHalfLength + vehicle.lengthMeters * 0.5 + 1.2) return false;
       const lateralGap = Math.abs(this.ego.laneOffset);
-      return lateralGap < egoHalfWidth + vehicle.widthMeters * 0.5;
+      return lateralGap < egoHalfWidth + vehicle.widthMeters * 0.5 + 0.2;
     });
   }
 
