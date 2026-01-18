@@ -790,6 +790,27 @@
   cursor: pointer;
 }
 
+.voice-debug-controls {
+  margin-top: 8px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: rgba(168, 186, 220, 0.85);
+}
+
+.voice-debug-controls button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(80, 110, 170, 0.6);
+  background: rgba(24, 34, 52, 0.9);
+  color: #e7f0ff;
+  font-size: 0.74rem;
+  cursor: pointer;
+}
+
 .voice-debug-summary {
   margin-top: 8px;
   font-size: 0.78rem;

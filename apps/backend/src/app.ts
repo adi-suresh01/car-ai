@@ -7,10 +7,14 @@ export const buildApp = () => {
 
   app.use(cors());
   app.use("/api/voice/webhooks/elevenlabs", express.raw({ type: "*/*" }));
+  app.use("/api/voice/transcriptions/file", express.raw({ type: "*/*", limit: "12mb" }));
 
   const jsonParser = express.json();
   app.use((req, res, next) => {
-    if (req.originalUrl === "/api/voice/webhooks/elevenlabs") {
+    if (
+      req.originalUrl === "/api/voice/webhooks/elevenlabs" ||
+      req.originalUrl === "/api/voice/transcriptions/file"
+    ) {
       next();
       return;
     }

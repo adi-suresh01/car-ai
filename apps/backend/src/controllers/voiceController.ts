@@ -30,6 +30,33 @@ class VoiceController {
     }
   }
 
+  async transcribeFile(req: Request, res: Response) {
+    const contentType = req.header("content-type") ?? "audio/webm";
+    const modelId = typeof req.query.modelId === "string" ? req.query.modelId : undefined;
+    const language = typeof req.query.language === "string" ? req.query.language : undefined;
+    const filename = typeof req.query.filename === "string" ? req.query.filename : undefined;
+
+    const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body ?? "");
+    if (!buffer || buffer.length === 0) {
+      res.status(400).json({ error: "audio file payload is required" });
+      return;
+    }
+
+    try {
+      const result = await elevenLabsService.transcribeAudioFile({
+        audioBuffer: buffer,
+        mimeType: contentType,
+        filename,
+        modelId,
+        language,
+      });
+      res.json(result);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      res.status(500).json({ error: message });
+    }
+  }
+
   async synthesize(req: Request, res: Response) {
     const { text, voiceId, modelId, latencyOptimization } = req.body ?? {};
 

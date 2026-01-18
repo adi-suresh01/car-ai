@@ -68,6 +68,63 @@ export class ElevenLabsService {
     return result;
   }
 
+  async transcribeAudioFile(payload: {
+    audioBuffer: Buffer;
+    mimeType: string;
+    filename?: string;
+    modelId?: string;
+    language?: string;
+  }): Promise<TranscriptionResult> {
+    if (!elevenLabsConfig.apiKey) {
+      throw new Error("ElevenLabs API key missing. Set XI_API_KEY.");
+    }
+
+    const formData = new FormData();
+    const filename = payload.filename ?? "audio.webm";
+    const blob = new Blob([payload.audioBuffer], { type: payload.mimeType });
+    formData.append("audio", blob, filename);
+    formData.append("model_id", payload.modelId ?? "universal-1");
+    if (payload.language) {
+      formData.append("language", payload.language);
+    }
+
+    const response = await fetch(`${elevenLabsConfig.baseUrl}${elevenLabsConfig.speechToTextPath}`, {
+      method: "POST",
+      headers: {
+        "xi-api-key": elevenLabsConfig.apiKey,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      logger.error("ElevenLabs transcription failed", { status: response.status, errorText });
+      throw new Error(`ElevenLabs transcription failed with status ${response.status}`);
+    }
+
+    const data = (await response.json()) as {
+      text: string;
+      confidence?: number;
+      words?: TranscriptionResult["words"];
+      [key: string]: unknown;
+    };
+
+    const result: TranscriptionResult = {
+      text: data.text,
+      raw: data,
+    };
+
+    if (typeof data.confidence === "number") {
+      result.confidence = data.confidence;
+    }
+
+    if (Array.isArray(data.words)) {
+      result.words = data.words;
+    }
+
+    return result;
+  }
+
   async synthesizeSpeech(payload: SpeechSynthesisRequestPayload): Promise<SpeechSynthesisResult> {
     if (!elevenLabsConfig.apiKey) {
       throw new Error("ElevenLabs API key missing. Set XI_API_KEY.");
