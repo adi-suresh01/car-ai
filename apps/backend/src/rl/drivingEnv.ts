@@ -309,9 +309,11 @@ export class DrivingEnvironment {
       }
       const jitter = this.rng() * TRAFFIC_RESPAWN_JITTER;
       const profile = this.laneProfiles[vehicle.laneIndex] ?? FALLBACK_LANE_PROFILE;
+      const densityFactor = Math.min(1.6, Math.max(0.6, profile.spawnRatePerMinute / 20));
+      const densityJitter = jitter * densityFactor;
       const tailZ = laneTailZ.get(vehicle.laneIndex) ?? TRAFFIC_RESPAWN_Z;
       const respawnZ = Math.min(
-        TRAFFIC_RESPAWN_Z - jitter,
+        TRAFFIC_RESPAWN_Z - densityJitter,
         tailZ - profile.preferredSpacingMeters - vehicle.lengthMeters * 0.5,
       );
       return {
