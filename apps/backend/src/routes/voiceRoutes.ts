@@ -9,5 +9,6 @@ router.post("/intent", (req, res) => voiceController.inferIntent(req, res));
 router.post("/webhooks/elevenlabs", (req, res) => voiceController.handleWebhook(req, res));
 router.post("/mission", (req, res) => voiceController.applyMission(req, res));
 router.post("/command", (req, res) => voiceController.command(req, res));
+router.post("/reset", (req, res) => voiceController.reset(req, res));
 
 export { router as voiceRoutes };

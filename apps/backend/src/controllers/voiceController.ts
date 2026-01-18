@@ -144,6 +144,11 @@ class VoiceController {
     await this.applyMission(req, res);
   }
 
+  reset(_req: Request, res: Response) {
+    this.simulationService.updateVoiceStatus({});
+    res.status(204).send();
+  }
+
   async applyMission(req: Request, res: Response) {
     const {
       speedMph,
