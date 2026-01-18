@@ -13,6 +13,13 @@ const LANE_WIDTH_METERS = 3.6;
 const MPH_TO_MPS = 0.44704;
 const MAX_SPEED_MPH = 120;
 const MAX_STEER_DEG = 38;
+const MAX_STEER_DEG_LOW_SPEED = 35;
+const MAX_STEER_DEG_HIGH_SPEED = 8;
+const STEER_RATE_DEG_PER_S = 140;
+const WHEELBASE_METERS = 2.8;
+const HEADING_DAMPING = 2.2;
+const ROLLING_RESIST_MPS2 = 0.18;
+const AERO_DRAG_COEFF = 0.32;
 const BRAKE_RATE_MPH_PER_S = 90;
 const COAST_DECEL_MPH_PER_S = 12;
 const COAST_THRESHOLD = 0.05;
@@ -32,6 +39,8 @@ const MIN_THROTTLE_FOR_SHIFT = 0.18;
 const mpsToMph = (mps: number) => mps / MPH_TO_MPS;
 const mphToMps = (mph: number) => mph * MPH_TO_MPS;
 const clampValue = (value: number, min: number, max: number) => Math.max(min, Math.min(max, value));
+const clampSigned = (value: number, maxAbs: number) => Math.max(-maxAbs, Math.min(maxAbs, value));
+const lerpValue = (from: number, to: number, t: number) => from + (to - from) * t;
 
 export const normalizeLaneCenters = (laneCenters: number[]): number[] => {
   if (!laneCenters || laneCenters.length === 0) {
@@ -462,6 +471,11 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       accelMphPerS -= brake * BRAKE_RATE_MPH_PER_S;
     }
 
+    const speedMpsBefore = currentSpeed * MPH_TO_MPS;
+    const dragMps2 = AERO_DRAG_COEFF * speedMpsBefore * speedMpsBefore;
+    const dragMphPerS = mpsToMph(dragMps2 + ROLLING_RESIST_MPS2);
+    accelMphPerS -= dragMphPerS;
+
     let newSpeedMph = currentSpeed + accelMphPerS * dt;
     if (gearStage.upshift !== Number.POSITIVE_INFINITY) {
       newSpeedMph = Math.min(newSpeedMph, gearStage.upshift);
@@ -498,10 +512,23 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
     gearStage = GEAR_STAGES[gear - 1] ?? gearStage;
 
     const speedMps = newSpeedMph * MPH_TO_MPS;
-    const steerAngleDeg = steering * MAX_STEER_DEG;
-    const headingRad = steerAngleDeg * (Math.PI / 180) * 0.35;
-
-    const lateralVelocity = steering * Math.min(1, newSpeedMph / 80) * 6;
+    const steerLimit =
+      newSpeedMph < 18
+        ? MAX_STEER_DEG_LOW_SPEED
+        : lerpValue(
+            MAX_STEER_DEG_LOW_SPEED,
+            MAX_STEER_DEG_HIGH_SPEED,
+            Math.min(1, (newSpeedMph - 18) / 60),
+          );
+    const desiredSteerAngleDeg = steering * steerLimit;
+    const steerDelta = desiredSteerAngleDeg - player.steerAngleDeg;
+    const steerStep = clampSigned(steerDelta, STEER_RATE_DEG_PER_S * dt);
+    const steerAngleDeg = player.steerAngleDeg + steerStep;
+    const steerAngleRad = steerAngleDeg * (Math.PI / 180);
+    const yawRate = speedMps > 0.2 ? (speedMps / WHEELBASE_METERS) * Math.tan(steerAngleRad) : 0;
+    const nextHeadingRad = player.headingRad + yawRate * dt;
+    const headingRad = lerpValue(nextHeadingRad, 0, Math.min(1, HEADING_DAMPING * dt));
+    const lateralVelocity = speedMps * Math.sin(headingRad);
     const newOffset = player.lateralOffset + lateralVelocity * dt;
 
     const halfRoadWidth = laneCenters.length > 0 ? (laneCenters.length - 1) / 2 : 0;
