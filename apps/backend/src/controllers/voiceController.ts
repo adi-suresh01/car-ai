@@ -98,6 +98,16 @@ class VoiceController {
     }
   }
 
+  async command(req: Request, res: Response) {
+    const { utterance } = req.body ?? {};
+    if (!utterance || typeof utterance !== "string") {
+      res.status(400).json({ error: "utterance is required" });
+      return;
+    }
+    req.body = { ...req.body, source: "voice" };
+    await this.applyMission(req, res);
+  }
+
   async applyMission(req: Request, res: Response) {
     const {
       speedMph,
