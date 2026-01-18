@@ -263,6 +263,10 @@ export class SimulationService {
     return this.laneProfiles.length;
   }
 
+  hasExit(exitId: string): boolean {
+    return this.layout.activeScene.exits.some((exit) => exit.id === exitId);
+  }
+
   updatePlayerState(partial: Partial<PlayerSnapshot> & { positionZ?: number }) {
     const next: PlayerSnapshot = {
       ...this.player,

@@ -69,6 +69,13 @@ class VoiceController {
       const result = await fireworksService.generateIntent({ transcript, context });
       const playerState = this.simulationService.getPlayerState();
       const laneCount = this.simulationService.getLaneCount();
+      if (result.intent.operation === "takeExit" && result.intent.exitId) {
+        const exists = this.simulationService.hasExit(result.intent.exitId);
+        if (!exists) {
+          res.status(400).json({ error: `Unknown exitId ${result.intent.exitId}`, intent: result.intent });
+          return;
+        }
+      }
       const patch = mapIntentToMission(result.intent, {
         currentLaneIndex: playerState.laneIndex,
         laneCount,
