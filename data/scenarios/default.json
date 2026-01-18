@@ -1,0 +1,10 @@
+{
+  "id": "default",
+  "seed": 41021,
+  "mission": {
+    "mode": "cruise",
+    "cruiseTargetSpeedMph": 65,
+    "cruiseGapMeters": 32,
+    "targetLaneIndex": 2
+  }
+}

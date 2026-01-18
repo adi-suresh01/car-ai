@@ -13,6 +13,7 @@ import type {
 } from "../models/simulation";
 import { SimulationService } from "../services/simulationService";
 import { createSeededRng, normalizeSeed } from "../utils/rng";
+import { loadScenario, type ScenarioConfig } from "../utils/scenarioLoader";
 
 const MPH_TO_MPS = 0.44704;
 const LANE_WIDTH_METERS = 3.6;
@@ -62,6 +63,7 @@ export interface DrivingEnvConfig {
   coastDragMps2?: number;
   laneCount?: number;
   seed?: number;
+  scenarioId?: string;
 }
 
 const DEFAULT_CONFIG: Required<DrivingEnvConfig> = {
@@ -95,10 +97,13 @@ export class DrivingEnvironment {
   private mission: DrivingMission;
   private rng: () => number;
   private seed: number;
+  private scenario?: ScenarioConfig;
 
   constructor(config: DrivingEnvConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
-    this.seed = normalizeSeed(config.seed);
+    this.scenario = config.scenarioId ? loadScenario(config.scenarioId) ?? undefined : undefined;
+    const scenarioSeed = this.scenario?.seed;
+    this.seed = normalizeSeed(scenarioSeed ?? config.seed);
     this.rng = createSeededRng(this.seed);
     const { lanes } = SimulationService.getInstance().getSnapshot();
     this.laneProfiles = lanes.map((lane) => ({ ...lane }));
@@ -118,6 +123,20 @@ export class DrivingEnvironment {
       mode: "cruise",
       returnLaneIndex: null,
     };
+    if (this.scenario?.mission) {
+      this.setMission({
+        mode: this.scenario.mission.mode ?? this.mission.mode,
+        cruiseTargetSpeedMps:
+          this.scenario.mission.cruiseTargetSpeedMph !== undefined
+            ? mphToMps(this.scenario.mission.cruiseTargetSpeedMph)
+            : this.mission.cruiseTargetSpeedMps,
+        cruiseGapMeters: this.scenario.mission.cruiseGapMeters ?? this.mission.cruiseGapMeters,
+        targetLaneIndex:
+          this.scenario.mission.targetLaneIndex !== undefined
+            ? this.scenario.mission.targetLaneIndex
+            : this.mission.targetLaneIndex,
+      });
+    }
     this.reset();
   }
 
