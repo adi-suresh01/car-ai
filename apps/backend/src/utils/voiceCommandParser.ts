@@ -49,7 +49,13 @@ export const parseVoiceMission = (
 
   const { currentSpeedMph, currentLaneIndex, laneCount } = context;
 
-  const isCruiseCommand = utterance.includes("cruise control") || utterance.startsWith("cruise");
+  const isSpeedCommand =
+    utterance.includes("set speed") ||
+    utterance.includes("set cruise") ||
+    utterance.includes("set cruising") ||
+    utterance.includes("set cruise control");
+  const isCruiseCommand =
+    utterance.includes("cruise control") || utterance.startsWith("cruise") || isSpeedCommand;
   const isOvertakeCommand = utterance.includes("overtake");
   const wantsLeft = containsAny(utterance, ["left lane", "move left", "shift left", "leftmost lane"]);
   const wantsRight = containsAny(utterance, ["right lane", "move right", "shift right", "rightmost lane"]);
