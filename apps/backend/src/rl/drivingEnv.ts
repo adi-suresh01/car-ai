@@ -98,6 +98,7 @@ export class DrivingEnvironment {
   private rng: () => number;
   private seed: number;
   private scenario?: ScenarioConfig;
+  private episodeIndex = 0;
 
   constructor(config: DrivingEnvConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -142,8 +143,13 @@ export class DrivingEnvironment {
 
   reset(goal?: Partial<DrivingMission>): { observation: DrivingObservation; snapshot: SimulationSnapshot } {
     this.episodeId = randomUUID();
-    this.seed = normalizeSeed(this.seed + 1);
+    if (this.scenario?.seed !== undefined) {
+      this.seed = normalizeSeed(this.scenario.seed + this.episodeIndex);
+    } else {
+      this.seed = normalizeSeed(this.seed + 1);
+    }
     this.rng = createSeededRng(this.seed);
+    this.episodeIndex += 1;
     const snapshot = SimulationService.getInstance().getSnapshot();
     this.traffic = snapshot.vehicles.map((vehicle) => ({
       id: vehicle.id,
@@ -166,6 +172,20 @@ export class DrivingEnvironment {
     const serviceMission = this.loadMissionFromService();
     if (serviceMission) {
       this.setMission(serviceMission);
+    }
+    if (this.scenario?.mission) {
+      this.setMission({
+        mode: this.scenario.mission.mode ?? this.mission.mode,
+        cruiseTargetSpeedMps:
+          this.scenario.mission.cruiseTargetSpeedMph !== undefined
+            ? mphToMps(this.scenario.mission.cruiseTargetSpeedMph)
+            : this.mission.cruiseTargetSpeedMps,
+        cruiseGapMeters: this.scenario.mission.cruiseGapMeters ?? this.mission.cruiseGapMeters,
+        targetLaneIndex:
+          this.scenario.mission.targetLaneIndex !== undefined
+            ? this.scenario.mission.targetLaneIndex
+            : this.mission.targetLaneIndex,
+      });
     }
     if (goal) {
       this.setMission(goal);
