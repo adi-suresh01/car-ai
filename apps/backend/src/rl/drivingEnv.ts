@@ -22,6 +22,8 @@ const TRAFFIC_RESPAWN_Z = -320;
 const TRAFFIC_RESPAWN_JITTER = 180;
 const EGO_LENGTH_METERS = 4.5;
 const EGO_WIDTH_METERS = 1.9;
+const RELATIVE_SPEED_CAP_MPS = 25;
+const RELATIVE_SPEED_SMOOTHING = 0.5;
 
 const mphToMps = (mph: number) => mph * MPH_TO_MPS;
 const mpsToMph = (mps: number) => mps / MPH_TO_MPS;
@@ -99,6 +101,14 @@ export class DrivingEnvironment {
   private seed: number;
   private scenario?: ScenarioConfig;
   private episodeIndex = 0;
+  private relativeSpeedCache = {
+    ahead: 0,
+    behind: 0,
+    leftAhead: 0,
+    leftBehind: 0,
+    rightAhead: 0,
+    rightBehind: 0,
+  };
 
   constructor(config: DrivingEnvConfig = {}) {
     this.config = { ...DEFAULT_CONFIG, ...config };
@@ -356,6 +366,33 @@ export class DrivingEnvironment {
     const rightGapAhead = rightAhead ? rightAhead.positionZ - this.ego.positionZ - rightAhead.lengthMeters * 0.5 : 120;
     const rightGapBehind = rightBehind ? this.ego.positionZ - rightBehind.positionZ - rightBehind.lengthMeters * 0.5 : 120;
 
+    const clampRelative = (value: number) =>
+      Math.max(-RELATIVE_SPEED_CAP_MPS, Math.min(RELATIVE_SPEED_CAP_MPS, value));
+    const smoothRelative = (value: number, previous: number) =>
+      previous + (value - previous) * RELATIVE_SPEED_SMOOTHING;
+    const relativeAhead = clampRelative(ahead ? ahead.speedMps - this.ego.speedMps : 0);
+    const relativeBehind = clampRelative(behind ? behind.speedMps - this.ego.speedMps : 0);
+    const relativeLeftAhead = clampRelative(leftAhead ? leftAhead.speedMps - this.ego.speedMps : 0);
+    const relativeLeftBehind = clampRelative(leftBehind ? leftBehind.speedMps - this.ego.speedMps : 0);
+    const relativeRightAhead = clampRelative(rightAhead ? rightAhead.speedMps - this.ego.speedMps : 0);
+    const relativeRightBehind = clampRelative(rightBehind ? rightBehind.speedMps - this.ego.speedMps : 0);
+
+    const smoothedAhead = smoothRelative(relativeAhead, this.relativeSpeedCache.ahead);
+    const smoothedBehind = smoothRelative(relativeBehind, this.relativeSpeedCache.behind);
+    const smoothedLeftAhead = smoothRelative(relativeLeftAhead, this.relativeSpeedCache.leftAhead);
+    const smoothedLeftBehind = smoothRelative(relativeLeftBehind, this.relativeSpeedCache.leftBehind);
+    const smoothedRightAhead = smoothRelative(relativeRightAhead, this.relativeSpeedCache.rightAhead);
+    const smoothedRightBehind = smoothRelative(relativeRightBehind, this.relativeSpeedCache.rightBehind);
+
+    this.relativeSpeedCache = {
+      ahead: smoothedAhead,
+      behind: smoothedBehind,
+      leftAhead: smoothedLeftAhead,
+      leftBehind: smoothedLeftBehind,
+      rightAhead: smoothedRightAhead,
+      rightBehind: smoothedRightBehind,
+    };
+
     const observation: DrivingObservation = {
       laneIndex: this.ego.laneIndex,
       laneOffsetMeters: this.ego.laneOffset,
@@ -365,16 +402,16 @@ export class DrivingEnvironment {
       cruiseGapMeters: this.mission.cruiseGapMeters,
       gapAheadMeters: gapAhead,
       gapBehindMeters: gapBehind,
-      relativeSpeedAheadMps: ahead ? ahead.speedMps - this.ego.speedMps : 0,
-      relativeSpeedBehindMps: behind ? behind.speedMps - this.ego.speedMps : 0,
+      relativeSpeedAheadMps: smoothedAhead,
+      relativeSpeedBehindMps: smoothedBehind,
       leftGapAheadMeters: leftGapAhead,
       leftGapBehindMeters: leftGapBehind,
-      leftRelativeSpeedAheadMps: leftAhead ? leftAhead.speedMps - this.ego.speedMps : 0,
-      leftRelativeSpeedBehindMps: leftBehind ? leftBehind.speedMps - this.ego.speedMps : 0,
+      leftRelativeSpeedAheadMps: smoothedLeftAhead,
+      leftRelativeSpeedBehindMps: smoothedLeftBehind,
       rightGapAheadMeters: rightGapAhead,
       rightGapBehindMeters: rightGapBehind,
-      rightRelativeSpeedAheadMps: rightAhead ? rightAhead.speedMps - this.ego.speedMps : 0,
-      rightRelativeSpeedBehindMps: rightBehind ? rightBehind.speedMps - this.ego.speedMps : 0,
+      rightRelativeSpeedAheadMps: smoothedRightAhead,
+      rightRelativeSpeedBehindMps: smoothedRightBehind,
       headingDeltaRad: this.ego.headingRad,
     };
     if (this.mission.targetLaneIndex !== null && this.mission.targetLaneIndex !== undefined) {
