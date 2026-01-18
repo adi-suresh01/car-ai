@@ -402,6 +402,7 @@ export class SimulationService {
     this.voiceStatus = {
       ...status,
       timestamp: Date.now(),
+      schemaVersion: 1,
     };
   }
 
