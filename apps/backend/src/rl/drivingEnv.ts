@@ -525,6 +525,11 @@ export class DrivingEnvironment {
       })),
       mission: this.buildMissionSnapshot(),
       collision,
+      rlMeta: {
+        episodeId: this.episodeId,
+        seed: this.seed,
+        scenarioId: this.scenario?.id,
+      },
     };
   }
 

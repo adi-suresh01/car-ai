@@ -72,6 +72,11 @@ export interface SimulationSnapshot {
   mission: DrivingMissionSnapshot;
   collision: boolean;
   voiceStatus?: VoiceInteractionStatus;
+  rlMeta?: {
+    episodeId: string;
+    seed: number;
+    scenarioId?: string;
+  };
 }
 
 export interface VoiceInteractionStatus {
