@@ -708,6 +708,65 @@
   color: rgba(216, 228, 248, 0.88);
 }
 
+.voice-debug-panel {
+  position: absolute;
+  top: 18px;
+  right: 24px;
+  width: 280px;
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(12, 16, 24, 0.9);
+  border: 1px solid rgba(70, 94, 140, 0.35);
+  box-shadow: 0 14px 36px rgba(6, 10, 18, 0.55);
+  z-index: 8;
+  pointer-events: auto;
+}
+
+.voice-debug-header {
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  text-transform: uppercase;
+  color: rgba(175, 193, 222, 0.8);
+  margin-bottom: 8px;
+}
+
+.voice-debug-body {
+  display: flex;
+  gap: 8px;
+}
+
+.voice-debug-body input {
+  flex: 1;
+  padding: 6px 8px;
+  border-radius: 8px;
+  border: 1px solid rgba(70, 94, 140, 0.4);
+  background: rgba(16, 20, 30, 0.9);
+  color: #eef3ff;
+  font-size: 0.82rem;
+}
+
+.voice-debug-body button {
+  padding: 6px 10px;
+  border-radius: 8px;
+  border: none;
+  background: linear-gradient(135deg, rgba(64, 160, 255, 0.9), rgba(48, 120, 230, 0.9));
+  color: #eef5ff;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.voice-debug-summary {
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: rgba(210, 224, 246, 0.9);
+}
+
+.voice-debug-error {
+  margin-top: 6px;
+  font-size: 0.74rem;
+  color: #ff8f8f;
+}
+
 @media (max-width: 1220px) {
   .simulator-layout {
     grid-template-columns: 1fr;
