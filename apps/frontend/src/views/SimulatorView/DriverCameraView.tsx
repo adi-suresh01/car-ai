@@ -20,6 +20,7 @@ import { VignetteShader } from "three/examples/jsm/shaders/VignetteShader";
 import { useSimulationStore, buildVehicleList } from "../../state/useSimulationStore";
 import type { VehicleState } from "../../models/simulation";
 import AutopilotController from "../../components/AutopilotController";
+import AlwaysOnVoiceListener from "../../components/AlwaysOnVoiceListener";
 import CarPlayDisplay from "../../components/CarPlayDisplay";
 import DashboardConsole from "../../components/DashboardConsole";
 import VoiceDebugPanel from "../../components/VoiceDebugPanel";
@@ -578,6 +579,7 @@ const PostProcessing = () => {
 export const DriverCameraView = () => (
   <div className="canvas-container driver-view">
     <AutopilotController enabled />
+    <AlwaysOnVoiceListener enabled />
     <Suspense fallback={<div className="canvas-fallback">Loading cockpit…</div>}>
       <Canvas
         shadows
