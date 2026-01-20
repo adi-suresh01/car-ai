@@ -81,6 +81,8 @@ export interface SimulationSnapshot {
 
 export interface VoiceInteractionStatus {
   lastUtterance?: string;
+  rawUtterance?: string;
+  sanitizedUtterance?: string;
   summary?: string;
   mode?: DrivingMissionSnapshot["mode"];
   timestamp?: number;

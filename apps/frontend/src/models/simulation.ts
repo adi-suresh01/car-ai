@@ -74,6 +74,8 @@ export interface SimulationSnapshot {
 
 export interface VoiceStatus {
   lastUtterance?: string;
+  rawUtterance?: string;
+  sanitizedUtterance?: string;
   summary?: string;
   mode?: DrivingMissionState["mode"];
   timestamp?: number;

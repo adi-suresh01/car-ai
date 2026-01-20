@@ -7,6 +7,7 @@ import type { DrivingMissionSnapshot, DrivingMissionUpdate } from "../models/sim
 import { parseVoiceMission } from "../utils/voiceCommandParser";
 import { intentLogger } from "../utils/intentLogger";
 import { mapIntentToMission } from "../utils/intentMissionMapper";
+import { sanitizeTranscript } from "../utils/voiceTranscriptSanitizer";
 
 const MPS_TO_MPH = 1 / 0.44704;
 const VOICE_COMMAND_KEYWORDS = [
@@ -181,8 +182,11 @@ class VoiceController {
           source: "intent",
         });
         const summary = this.buildVoiceSummary(mission, patch);
+        const sanitized = sanitizeTranscript(transcript);
         this.simulationService.updateVoiceStatus({
-          lastUtterance: transcript,
+          lastUtterance: sanitized.cleaned || transcript,
+          rawUtterance: transcript,
+          sanitizedUtterance: sanitized.cleaned,
           summary,
           mode: mission.mode,
         });
@@ -274,7 +278,8 @@ class VoiceController {
 
     const missionBefore = this.simulationService.getMission();
     const utteranceText = typeof utterance === "string" ? utterance : "";
-    const normalizedUtterance = utteranceText.toLowerCase().trim();
+    const sanitized = sanitizeTranscript(utteranceText);
+    const normalizedUtterance = sanitized.cleaned.toLowerCase().trim();
 
     const hasExplicitOverrides =
       speedMph !== undefined ||
@@ -297,7 +302,7 @@ class VoiceController {
       : (playerState.speedMps ?? 0) * MPS_TO_MPH;
 
     if (typeof utterance === "string" && normalizedUtterance.length > 0) {
-      const parsed = parseVoiceMission(utterance, {
+      const parsed = parseVoiceMission(sanitized.cleaned, {
         currentSpeedMph,
         currentLaneIndex: playerState.laneIndex,
         laneCount,
@@ -442,7 +447,9 @@ class VoiceController {
       const mission = this.simulationService.updateMission(patch);
       const summary = this.buildVoiceSummary(mission, patch);
       this.simulationService.updateVoiceStatus({
-        lastUtterance: utteranceText,
+        lastUtterance: sanitized.cleaned || utteranceText,
+        rawUtterance: utteranceText,
+        sanitizedUtterance: sanitized.cleaned,
         summary,
         mode: mission.mode,
       });
@@ -495,6 +502,8 @@ class VoiceController {
       const summary = "No police reported within the next 10 miles.";
       this.simulationService.updateVoiceStatus({
         lastUtterance: utterance,
+        rawUtterance: utterance,
+        sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
       });
@@ -512,6 +521,8 @@ class VoiceController {
       const summary = "Moderate traffic 2 miles ahead. Estimated delay: 4 minutes.";
       this.simulationService.updateVoiceStatus({
         lastUtterance: utterance,
+        rawUtterance: utterance,
+        sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
       });
@@ -529,6 +540,8 @@ class VoiceController {
       const summary = "No reported hazards within the next 5 miles.";
       this.simulationService.updateVoiceStatus({
         lastUtterance: utterance,
+        rawUtterance: utterance,
+        sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
       });
@@ -546,6 +559,8 @@ class VoiceController {
       const summary = "Speed camera reported 5.1 miles ahead.";
       this.simulationService.updateVoiceStatus({
         lastUtterance: utterance,
+        rawUtterance: utterance,
+        sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
       });
@@ -563,6 +578,8 @@ class VoiceController {
       const summary = "Next exit in 1.2 miles: Embarcadero.";
       this.simulationService.updateVoiceStatus({
         lastUtterance: utterance,
+        rawUtterance: utterance,
+        sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
       });

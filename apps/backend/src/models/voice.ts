@@ -57,9 +57,15 @@ export const isVoiceInteractionStatus = (value: unknown): value is VoiceInteract
     return false;
   }
   const candidate = value as Record<string, unknown>;
-  const { lastUtterance, summary, mode, timestamp } = candidate;
+  const { lastUtterance, rawUtterance, sanitizedUtterance, summary, mode, timestamp } = candidate;
 
   if (lastUtterance !== undefined && typeof lastUtterance !== "string") {
+    return false;
+  }
+  if (rawUtterance !== undefined && typeof rawUtterance !== "string") {
+    return false;
+  }
+  if (sanitizedUtterance !== undefined && typeof sanitizedUtterance !== "string") {
     return false;
   }
   if (summary !== undefined && typeof summary !== "string") {
