@@ -79,6 +79,11 @@ export interface VoiceStatus {
   summary?: string;
   mode?: DrivingMissionState["mode"];
   timestamp?: number;
+  telemetry?: {
+    rejected?: number;
+    noise?: number;
+    summary?: number;
+  };
 }
 
 export type MissionSource = "system" | "manual" | "voice" | "intent" | "rl";

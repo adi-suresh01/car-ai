@@ -167,6 +167,7 @@ export class SimulationService {
   private mission: DrivingMissionSnapshot;
   private playerCollision = false;
   private voiceStatus: VoiceInteractionStatus = {};
+  private voiceTelemetry = { rejected: 0, noise: 0, summary: 0 };
   private lastTick: number;
   private readonly timer: NodeJS.Timeout;
 
@@ -246,6 +247,7 @@ export class SimulationService {
     this.seedTraffic();
     this.playerCollision = false;
     this.voiceStatus = {};
+    this.voiceTelemetry = { rejected: 0, noise: 0, summary: 0 };
   }
 
   getPlayerState(): PlayerSnapshot {
@@ -408,8 +410,20 @@ export class SimulationService {
   }
 
   updateVoiceStatus(status: VoiceInteractionStatus) {
+    if (status.telemetry) {
+      if (typeof status.telemetry.rejected === "number") {
+        this.voiceTelemetry.rejected += status.telemetry.rejected;
+      }
+      if (typeof status.telemetry.noise === "number") {
+        this.voiceTelemetry.noise += status.telemetry.noise;
+      }
+      if (typeof status.telemetry.summary === "number") {
+        this.voiceTelemetry.summary += status.telemetry.summary;
+      }
+    }
     this.voiceStatus = {
       ...status,
+      telemetry: { ...this.voiceTelemetry },
       timestamp: Date.now(),
       schemaVersion: 1,
     };

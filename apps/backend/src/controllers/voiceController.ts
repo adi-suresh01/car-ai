@@ -224,6 +224,7 @@ class VoiceController {
             sanitizedUtterance: sanitized.cleaned,
             summary,
             mode: mission.mode,
+            telemetry: { summary: 1 },
           });
           void intentLogger.log({
             timestamp: new Date().toISOString(),
@@ -277,6 +278,7 @@ class VoiceController {
           sanitizedUtterance: sanitized.cleaned,
           summary,
           mode: mission.mode,
+          telemetry: { summary: 1 },
         });
         void intentLogger.log({
           timestamp: new Date().toISOString(),
@@ -395,6 +397,7 @@ class VoiceController {
         sanitizedUtterance: sanitized.cleaned,
         summary: "Ignored non-English transcript",
         mode: missionBefore.mode,
+        telemetry: { rejected: 1 },
       });
       res.status(204).send();
       return;
@@ -562,6 +565,7 @@ class VoiceController {
         sanitizedUtterance: sanitized.cleaned,
         summary,
         mode: mission.mode,
+        telemetry: { summary: 1 },
       });
       void intentLogger.log({
         timestamp: new Date().toISOString(),
@@ -616,6 +620,7 @@ class VoiceController {
         sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
+        telemetry: { summary: 1 },
       });
       void intentLogger.log({
         timestamp: new Date().toISOString(),
@@ -635,6 +640,7 @@ class VoiceController {
         sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
+        telemetry: { summary: 1 },
       });
       void intentLogger.log({
         timestamp: new Date().toISOString(),
@@ -654,6 +660,7 @@ class VoiceController {
         sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
+        telemetry: { summary: 1 },
       });
       void intentLogger.log({
         timestamp: new Date().toISOString(),
@@ -673,6 +680,7 @@ class VoiceController {
         sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
+        telemetry: { summary: 1 },
       });
       void intentLogger.log({
         timestamp: new Date().toISOString(),
@@ -692,6 +700,7 @@ class VoiceController {
         sanitizedUtterance: utterance,
         summary,
         mode: mission.mode,
+        telemetry: { summary: 1 },
       });
       void intentLogger.log({
         timestamp: new Date().toISOString(),
