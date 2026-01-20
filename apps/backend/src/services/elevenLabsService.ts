@@ -23,9 +23,10 @@ export class ElevenLabsService {
       throw new Error("ElevenLabs API key missing. Set XI_API_KEY.");
     }
 
+    const resolvedModelId = payload.modelId ?? (payload.language === "en" ? "scribe_v1" : "universal-1");
     const body = {
       audio_url: payload.audioUrl,
-      model_id: payload.modelId ?? "universal-1",
+      model_id: resolvedModelId,
       // eslint-disable-next-line @typescript-eslint/naming-convention
       language: payload.language,
     };
@@ -52,7 +53,7 @@ export class ElevenLabsService {
       [key: string]: unknown;
     };
     logger.info("ElevenLabs transcription metadata", {
-      modelId: body.model_id,
+      modelId: resolvedModelId,
       language: payload.language,
       detectedLanguage: (data as { language?: string; detected_language?: string }).language
         ?? (data as { language?: string; detected_language?: string }).detected_language,
@@ -90,7 +91,8 @@ export class ElevenLabsService {
     const filename = payload.filename ?? "audio.webm";
     const blob = new Blob([payload.audioBuffer], { type: payload.mimeType });
     formData.append("file", blob, filename);
-    formData.append("model_id", payload.modelId ?? "scribe_v1");
+    const resolvedModelId = payload.modelId ?? (payload.language === "en" ? "scribe_v1" : "universal-1");
+    formData.append("model_id", resolvedModelId);
     if (payload.language) {
       formData.append("language", payload.language);
     }
@@ -116,7 +118,7 @@ export class ElevenLabsService {
       [key: string]: unknown;
     };
     logger.info("ElevenLabs transcription metadata", {
-      modelId: payload.modelId ?? "scribe_v1",
+      modelId: resolvedModelId,
       language: payload.language,
       detectedLanguage: (data as { language?: string; detected_language?: string }).language
         ?? (data as { language?: string; detected_language?: string }).detected_language,
