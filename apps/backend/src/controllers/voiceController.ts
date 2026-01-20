@@ -299,6 +299,24 @@ class VoiceController {
       returnLane !== undefined ||
       laneChangeDirection !== undefined;
 
+    if (
+      utteranceText &&
+      !hasExplicitOverrides &&
+      source === "voice" &&
+      sanitized.rejected &&
+      sanitized.reason === "non_english"
+    ) {
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: sanitized.cleaned || utteranceText,
+        rawUtterance: utteranceText,
+        sanitizedUtterance: sanitized.cleaned,
+        summary: "Ignored non-English transcript",
+        mode: missionBefore.mode,
+      });
+      res.status(204).send();
+      return;
+    }
+
     if (utteranceText && !hasExplicitOverrides && source === "voice" && !isLikelyVoiceCommand(normalizedUtterance)) {
       res.status(204).send();
       return;
