@@ -21,6 +21,7 @@ import { useSimulationStore, buildVehicleList } from "../../state/useSimulationS
 import type { VehicleState } from "../../models/simulation";
 import AutopilotController from "../../components/AutopilotController";
 import AlwaysOnVoiceListener from "../../components/AlwaysOnVoiceListener";
+import SettingsPanel from "../../components/SettingsPanel";
 import CarPlayDisplay from "../../components/CarPlayDisplay";
 import DashboardConsole from "../../components/DashboardConsole";
 import VoiceDebugPanel from "../../components/VoiceDebugPanel";
@@ -579,7 +580,7 @@ const PostProcessing = () => {
 export const DriverCameraView = () => (
   <div className="canvas-container driver-view">
     <AutopilotController enabled />
-    <AlwaysOnVoiceListener enabled />
+    <AlwaysOnVoiceListener />
     <Suspense fallback={<div className="canvas-fallback">Loading cockpit…</div>}>
       <Canvas
         shadows
@@ -597,6 +598,7 @@ export const DriverCameraView = () => (
     <DashboardConsole />
     <CarPlayDisplay />
     <VoiceDebugPanel />
+    <SettingsPanel />
     <LaneChangeToast />
   </div>
 );

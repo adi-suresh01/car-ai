@@ -1,18 +1,20 @@
 import { useEffect } from "react";
 import { useVoiceCapture } from "../controllers/useVoiceCapture";
+import { useSimulationStore } from "../state/useSimulationStore";
 
-const AlwaysOnVoiceListener = ({ enabled }: { enabled: boolean }) => {
+const AlwaysOnVoiceListener = () => {
+  const voiceListeningEnabled = useSimulationStore((state) => state.voiceListeningEnabled);
   const { enable, disable, enabled: isEnabled } = useVoiceCapture();
 
   useEffect(() => {
-    if (enabled && !isEnabled) {
+    if (voiceListeningEnabled && !isEnabled) {
       enable();
       return;
     }
-    if (!enabled && isEnabled) {
+    if (!voiceListeningEnabled && isEnabled) {
       disable();
     }
-  }, [enabled, isEnabled, enable, disable]);
+  }, [voiceListeningEnabled, isEnabled, enable, disable]);
 
   useEffect(() => () => disable(), [disable]);
 

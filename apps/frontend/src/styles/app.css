@@ -842,6 +842,42 @@
   color: #ff8f8f;
 }
 
+.settings-panel {
+  position: absolute;
+  right: 24px;
+  bottom: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 12px 16px;
+  background: rgba(12, 18, 28, 0.78);
+  border: 1px solid rgba(120, 160, 200, 0.25);
+  border-radius: 12px;
+  color: #e5edf6;
+  font-family: "Space Grotesk", "Avenir", sans-serif;
+  z-index: 20;
+}
+
+.settings-title {
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(229, 237, 246, 0.7);
+}
+
+.settings-toggle {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.95rem;
+}
+
+.settings-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: #7fd7ff;
+}
+
 .lane-change-toast {
   position: absolute;
   top: 24px;

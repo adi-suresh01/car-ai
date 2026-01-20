@@ -141,6 +141,7 @@ interface SimulationStore {
   collision: boolean;
   voiceStatus?: VoiceStatus;
   voiceHistory: Array<{ utterance: string; summary?: string; timestamp?: number }>;
+  voiceListeningEnabled: boolean;
   dashboard: DashboardState;
   lastManualInputAt?: number;
   loadLayout: () => Promise<void>;
@@ -148,6 +149,7 @@ interface SimulationStore {
   hydrateSnapshot: (snapshot: SimulationSnapshot) => void;
   updateControlInput: (input: ControlInput) => void;
   markManualInput: () => void;
+  setVoiceListeningEnabled: (enabled: boolean) => void;
   tick: (dt: number) => void;
   applyMission: (mission: DrivingMissionState) => void;
   updateMission: (input: MissionUpdateInput) => Promise<void>;
@@ -177,6 +179,8 @@ const createDefaultMission = (): DrivingMissionState => ({
   source: "system",
   updatedAt: Date.now(),
 });
+
+const DEFAULT_VOICE_LISTENING_ENABLED = import.meta.env.DEV ? true : false;
 
 interface MissionUpdateInput {
   speedMph?: number;
@@ -245,6 +249,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   collision: false,
   voiceStatus: undefined,
   voiceHistory: [],
+  voiceListeningEnabled: DEFAULT_VOICE_LISTENING_ENABLED,
   lastManualInputAt: undefined,
   dashboard: {
     activeApp: "maps",
@@ -384,6 +389,9 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   },
   markManualInput: () => {
     set({ lastManualInputAt: Date.now() });
+  },
+  setVoiceListeningEnabled: (enabled: boolean) => {
+    set({ voiceListeningEnabled: enabled });
   },
   tick: (dt: number) => {
     const state = get();
