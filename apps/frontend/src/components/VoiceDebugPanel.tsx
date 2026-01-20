@@ -2,10 +2,12 @@ import { useState } from "react";
 import { useVoiceCommand } from "../controllers/useVoiceCommand";
 import { useVoiceCapture } from "../controllers/useVoiceCapture";
 import { apiClient } from "../services/apiClient";
+import { useSimulationStore } from "../state/useSimulationStore";
 
 const VoiceDebugPanel = () => {
   const enabled = import.meta.env.VITE_SHOW_VOICE_DEBUG === "true";
   const { sendCommand, isSending, lastSummary, error } = useVoiceCommand();
+  const voiceStatus = useSimulationStore((state) => state.voiceStatus);
   const {
     startRecording,
     stopRecording,
@@ -58,6 +60,15 @@ const VoiceDebugPanel = () => {
         <span>{status}</span>
       </div>
       {lastTranscript ? <div className="voice-debug-summary">Transcript: {lastTranscript}</div> : null}
+      {voiceStatus?.rawUtterance ? (
+        <div className="voice-debug-summary">Raw: {voiceStatus.rawUtterance}</div>
+      ) : null}
+      {voiceStatus?.sanitizedUtterance ? (
+        <div className="voice-debug-summary">Sanitized: {voiceStatus.sanitizedUtterance}</div>
+      ) : null}
+      {voiceStatus?.rejectionReason ? (
+        <div className="voice-debug-summary">Rejection: {voiceStatus.rejectionReason}</div>
+      ) : null}
       <button className="voice-debug-reset" type="button" onClick={handleReset}>
         Reset Voice Status
       </button>

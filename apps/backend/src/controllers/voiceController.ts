@@ -398,6 +398,7 @@ class VoiceController {
         summary: "Ignored non-English transcript",
         mode: missionBefore.mode,
         telemetry: { rejected: 1 },
+        rejectionReason: sanitized.reason,
       });
       res.status(204).send();
       return;

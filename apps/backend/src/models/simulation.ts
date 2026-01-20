@@ -92,6 +92,7 @@ export interface VoiceInteractionStatus {
     noise?: number;
     summary?: number;
   };
+  rejectionReason?: string;
 }
 
 export type MissionSource = "system" | "manual" | "voice" | "intent" | "rl";

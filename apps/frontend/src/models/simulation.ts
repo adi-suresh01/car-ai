@@ -84,6 +84,7 @@ export interface VoiceStatus {
     noise?: number;
     summary?: number;
   };
+  rejectionReason?: string;
 }
 
 export type MissionSource = "system" | "manual" | "voice" | "intent" | "rl";
