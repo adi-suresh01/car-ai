@@ -9,6 +9,8 @@ interface VoiceCaptureOptions {
   modelId?: string;
   language?: string;
   segmentMs?: number;
+  enableVad?: boolean;
+  vadRmsThreshold?: number;
 }
 
 export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
@@ -73,6 +75,8 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
   const transcriptionEndpoint = options.transcriptionEndpoint ?? "/voice/transcriptions/file";
   const commandEndpoint = options.commandEndpoint ?? "/voice/command";
   const segmentMs = options.segmentMs ?? 2600;
+  const enableVad = options.enableVad ?? true;
+  const vadRmsThreshold = options.vadRmsThreshold ?? 0.015;
 
   const clearLoopTimeout = () => {
     if (loopTimeoutRef.current) {
@@ -114,6 +118,18 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
         // eslint-disable-next-line no-console
         console.log("Voice capture", { bytes: arrayBuffer.byteLength, mimeType: recorder.mimeType });
         const languageParam = options.language ?? "en";
+        if (await isLikelySilent(arrayBuffer)) {
+          setIsTranscribing(false);
+          chunksRef.current = [];
+          recorder.stream.getTracks().forEach((track) => track.stop());
+          if (enabled) {
+            clearLoopTimeout();
+            loopTimeoutRef.current = window.setTimeout(() => {
+              void startRecording();
+            }, 180);
+          }
+          return;
+        }
         const response = await fetch(
           `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${languageParam}`,
           {
@@ -175,6 +191,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     enabled,
     stopRecording,
     shouldSendVoiceCommand,
+    isLikelySilent,
   ]);
 
   const status = useMemo(
@@ -208,3 +225,26 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     disable,
   };
 };
+  const isLikelySilent = useCallback(
+    async (arrayBuffer: ArrayBuffer) => {
+      if (!enableVad) {
+        return false;
+      }
+      try {
+        const context = new AudioContext();
+        const audioBuffer = await context.decodeAudioData(arrayBuffer.slice(0));
+        const channel = audioBuffer.getChannelData(0);
+        let sumSquares = 0;
+        for (let i = 0; i < channel.length; i += 1) {
+          const value = channel[i] ?? 0;
+          sumSquares += value * value;
+        }
+        const rms = Math.sqrt(sumSquares / Math.max(1, channel.length));
+        await context.close();
+        return rms < vadRmsThreshold;
+      } catch {
+        return false;
+      }
+    },
+    [enableVad, vadRmsThreshold],
+  );
