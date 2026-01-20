@@ -92,6 +92,8 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
   const segmentMs = options.segmentMs ?? 2600;
   const enableVad = options.enableVad ?? true;
   const vadRmsThreshold = options.vadRmsThreshold ?? 0.015;
+  const promptHint =
+    "Voice commands: cruise control, set speed in mph, speed up, slow down, change lanes left or right, overtake, take exit.";
 
   const clearLoopTimeout = () => {
     if (loopTimeoutRef.current) {
@@ -146,7 +148,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
           return;
         }
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${languageParam}`,
+          `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${languageParam}&prompt=${encodeURIComponent(promptHint)}`,
           {
             method: "POST",
             headers: { "Content-Type": recorder.mimeType },
