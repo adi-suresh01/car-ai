@@ -8,6 +8,7 @@ import { parseVoiceMission } from "../utils/voiceCommandParser";
 import { intentLogger } from "../utils/intentLogger";
 import { mapIntentToMission } from "../utils/intentMissionMapper";
 import { sanitizeTranscript } from "../utils/voiceTranscriptSanitizer";
+import { env } from "../config/env";
 
 const MPS_TO_MPH = 1 / 0.44704;
 const VOICE_COMMAND_KEYWORDS = [
@@ -182,7 +183,11 @@ class VoiceController {
           source: "intent",
         });
         const summary = this.buildVoiceSummary(mission, patch);
-        const sanitized = sanitizeTranscript(transcript);
+        const sanitized = sanitizeTranscript(transcript, {
+          allowlist: env.voiceCommandAllowlist,
+          denylist: env.voiceCommandDenylist,
+          minTokens: env.voiceMinTokens,
+        });
         this.simulationService.updateVoiceStatus({
           lastUtterance: sanitized.cleaned || transcript,
           rawUtterance: transcript,
@@ -278,7 +283,11 @@ class VoiceController {
 
     const missionBefore = this.simulationService.getMission();
     const utteranceText = typeof utterance === "string" ? utterance : "";
-    const sanitized = sanitizeTranscript(utteranceText);
+    const sanitized = sanitizeTranscript(utteranceText, {
+      allowlist: env.voiceCommandAllowlist,
+      denylist: env.voiceCommandDenylist,
+      minTokens: env.voiceMinTokens,
+    });
     const normalizedUtterance = sanitized.cleaned.toLowerCase().trim();
 
     const hasExplicitOverrides =

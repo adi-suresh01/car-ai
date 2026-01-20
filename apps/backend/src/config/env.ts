@@ -10,6 +10,15 @@ const optional = (value?: string | null) => {
   return trimmed.length > 0 ? trimmed : undefined;
 };
 
+const parseCsv = (value?: string | null) => {
+  const raw = optional(value);
+  if (!raw) return undefined;
+  return raw
+    .split(",")
+    .map((entry) => entry.trim())
+    .filter((entry) => entry.length > 0);
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? DEFAULT_PORT),
@@ -18,6 +27,9 @@ export const env = {
   fireworksApiKey: optional(process.env.FIREWORKS_API_KEY),
   fireworksRlBaseModel: optional(process.env.FIREWORKS_RL_BASE_MODEL),
   fireworksEvalSuite: optional(process.env.FIREWORKS_EVAL_SUITE),
+  voiceCommandAllowlist: parseCsv(process.env.VOICE_COMMAND_ALLOWLIST),
+  voiceCommandDenylist: parseCsv(process.env.VOICE_COMMAND_DENYLIST),
+  voiceMinTokens: process.env.VOICE_MIN_TOKENS ? Number(process.env.VOICE_MIN_TOKENS) : undefined,
 };
 
 export const isProduction = env.nodeEnv === "production";
