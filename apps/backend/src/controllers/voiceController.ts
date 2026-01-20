@@ -74,6 +74,22 @@ class VoiceController {
 
     try {
       const result = await elevenLabsService.transcribeAudio({ audioUrl, modelId, language });
+      const sanitized = sanitizeTranscript(result.text ?? "", {
+        allowlist: env.voiceCommandAllowlist,
+        denylist: env.voiceCommandDenylist,
+        minTokens: env.voiceMinTokens,
+      });
+      if (sanitized.rejected && sanitized.reason === "non_english") {
+        const primaryModel = modelId ?? (language === "en" ? "scribe_v1" : "universal-1");
+        const fallbackModel = primaryModel === "scribe_v1" ? "universal-1" : "scribe_v1";
+        const fallback = await elevenLabsService.transcribeAudio({
+          audioUrl,
+          modelId: fallbackModel,
+          language,
+        });
+        res.json(fallback);
+        return;
+      }
       res.json(result);
     } catch (error) {
       const message = error instanceof Error ? error.message : "Unknown error";
@@ -108,6 +124,24 @@ class VoiceController {
         ...(modelId ? { modelId } : {}),
         ...(language ? { language } : {}),
       });
+      const sanitized = sanitizeTranscript(result.text ?? "", {
+        allowlist: env.voiceCommandAllowlist,
+        denylist: env.voiceCommandDenylist,
+        minTokens: env.voiceMinTokens,
+      });
+      if (sanitized.rejected && sanitized.reason === "non_english") {
+        const primaryModel = modelId ?? (language === "en" ? "scribe_v1" : "universal-1");
+        const fallbackModel = primaryModel === "scribe_v1" ? "universal-1" : "scribe_v1";
+        const fallback = await elevenLabsService.transcribeAudioFile({
+          audioBuffer: buffer,
+          mimeType: contentType,
+          ...(filename ? { filename } : {}),
+          modelId: fallbackModel,
+          ...(language ? { language } : {}),
+        });
+        res.json(fallback);
+        return;
+      }
       logger.info("Voice file transcription result", {
         textLength: result.text?.length ?? 0,
         textPreview: result.text?.slice(0, 120) ?? "",
