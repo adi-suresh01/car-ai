@@ -22,6 +22,10 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const loopTimeoutRef = useRef<number | null>(null);
+  const transcriptBufferRef = useRef<{ text: string; lastUpdated: number }>({
+    text: "",
+    lastUpdated: 0,
+  });
 
   const shouldSendVoiceCommand = useCallback((transcript: string) => {
     const normalized = transcript.trim().toLowerCase();
@@ -70,6 +74,16 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
       return false;
     }
     return true;
+  }, []);
+
+  const bufferTranscript = useCallback((transcript: string) => {
+    const now = Date.now();
+    const previous = transcriptBufferRef.current;
+    const base = now - previous.lastUpdated > 6000 ? "" : previous.text;
+    const combined = `${base} ${transcript}`.trim();
+    const trimmed = combined.length > 220 ? combined.slice(combined.length - 220) : combined;
+    transcriptBufferRef.current = { text: trimmed, lastUpdated: now };
+    return trimmed;
   }, []);
 
   const transcriptionEndpoint = options.transcriptionEndpoint ?? "/voice/transcriptions/file";
@@ -149,13 +163,15 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
         console.log("Voice transcript", data.text);
         const transcript = data.text.trim();
         setLastTranscript(transcript);
-        if (shouldSendVoiceCommand(transcript)) {
+        const bufferedTranscript = bufferTranscript(transcript);
+        if (shouldSendVoiceCommand(bufferedTranscript)) {
           const commandResponse = await apiClient.post<{ mission?: DrivingMissionState }>(commandEndpoint, {
-            utterance: transcript,
+            utterance: bufferedTranscript,
           });
           if (commandResponse?.mission) {
             useSimulationStore.getState().applyMission(commandResponse.mission);
           }
+          transcriptBufferRef.current = { text: "", lastUpdated: 0 };
         }
       } catch (err) {
         const message = err instanceof Error ? err.message : "Voice capture failed";
@@ -192,6 +208,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     stopRecording,
     shouldSendVoiceCommand,
     isLikelySilent,
+    bufferTranscript,
   ]);
 
   const status = useMemo(
