@@ -51,6 +51,13 @@ export class ElevenLabsService {
       words?: TranscriptionResult["words"];
       [key: string]: unknown;
     };
+    logger.info("ElevenLabs transcription metadata", {
+      modelId: body.model_id,
+      language: payload.language,
+      detectedLanguage: (data as { language?: string; detected_language?: string }).language
+        ?? (data as { language?: string; detected_language?: string }).detected_language,
+      confidence: data.confidence,
+    });
 
     const result: TranscriptionResult = {
       text: data.text,
@@ -108,6 +115,13 @@ export class ElevenLabsService {
       words?: TranscriptionResult["words"];
       [key: string]: unknown;
     };
+    logger.info("ElevenLabs transcription metadata", {
+      modelId: payload.modelId ?? "scribe_v1",
+      language: payload.language,
+      detectedLanguage: (data as { language?: string; detected_language?: string }).language
+        ?? (data as { language?: string; detected_language?: string }).detected_language,
+      confidence: data.confidence,
+    });
 
     const result: TranscriptionResult = {
       text: data.text,
