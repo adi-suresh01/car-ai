@@ -2,5 +2,5 @@
 set -euo pipefail
 
 git add -A
-git commit -m "reinforcement learning training + traffic"
+git commit -m "voice debug"
 git push origin main
