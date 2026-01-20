@@ -404,7 +404,32 @@ class VoiceController {
       return;
     }
 
+    if (utteranceText && !hasExplicitOverrides && source === "voice" && sanitized.rejected) {
+      const noiseReasons = ["noise_tag", "too_short", "too_few_tokens"];
+      const isNoise = sanitized.reason ? noiseReasons.includes(sanitized.reason) : false;
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: sanitized.cleaned || utteranceText,
+        rawUtterance: utteranceText,
+        sanitizedUtterance: sanitized.cleaned,
+        summary: isNoise ? "Ignored background noise" : "Ignored voice input",
+        mode: missionBefore.mode,
+        telemetry: { rejected: 1, ...(isNoise ? { noise: 1 } : {}) },
+        rejectionReason: sanitized.reason,
+      });
+      res.status(204).send();
+      return;
+    }
+
     if (utteranceText && !hasExplicitOverrides && source === "voice" && !isLikelyVoiceCommand(normalizedUtterance)) {
+      this.simulationService.updateVoiceStatus({
+        lastUtterance: sanitized.cleaned || utteranceText,
+        rawUtterance: utteranceText,
+        sanitizedUtterance: sanitized.cleaned,
+        summary: "Ignored non-command transcript",
+        mode: missionBefore.mode,
+        telemetry: { rejected: 1 },
+        rejectionReason: "not_command",
+      });
       res.status(204).send();
       return;
     }
