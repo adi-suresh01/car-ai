@@ -90,6 +90,6 @@ export const sanitizeTranscript = (
     isLikelyEnglish,
     isCommandLike,
     rejected,
-    reason,
+    ...(reason ? { reason } : {}),
   };
 };

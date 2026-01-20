@@ -121,8 +121,26 @@ export const parseVoiceMission = (
     containsAny(utterance, ["increase speed", "speed up", "go faster", "faster", "raise speed"]);
   const isSpeedDecrease =
     containsAny(utterance, ["decrease speed", "slow down", "go slower", "slower", "reduce speed"]);
-  const wantsLeft = containsAny(utterance, ["left lane", "move left", "shift left", "leftmost lane"]);
-  const wantsRight = containsAny(utterance, ["right lane", "move right", "shift right", "rightmost lane"]);
+  const wantsLeft = containsAny(utterance, [
+    "left lane",
+    "lane left",
+    "move left",
+    "shift left",
+    "leftmost lane",
+    "turn left",
+    "switch left",
+    "change lane left",
+  ]);
+  const wantsRight = containsAny(utterance, [
+    "right lane",
+    "lane right",
+    "move right",
+    "shift right",
+    "rightmost lane",
+    "turn right",
+    "switch right",
+    "change lane right",
+  ]);
 
   if (isOvertakeCommand) {
     const preferredDirections: LaneChangeDirection[] = wantsRight ? ["right", "left"] : ["left", "right"];

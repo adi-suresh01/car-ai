@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "../services/apiClient";
 import { useSimulationStore } from "../state/useSimulationStore";
 import type { DrivingMissionState } from "../models/simulation";
@@ -94,6 +94,42 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
   const vadRmsThreshold = options.vadRmsThreshold ?? 0.015;
   const promptHint =
     "Voice commands: cruise control, set speed in mph, speed up, slow down, change lanes left or right, overtake, take exit.";
+  const stripBracketed = useCallback(
+    (text: string) => text.replace(/\[[^\]]*\]|\([^\)]*\)/g, " "),
+    [],
+  );
+  const normalizeTranscriptForCommand = useCallback(
+    (text: string) =>
+      stripBracketed(text)
+        .replace(/[^\x00-\x7F]/g, " ")
+        .replace(/\s+/g, " ")
+        .trim(),
+    [stripBracketed],
+  );
+
+  const isLikelySilent = useCallback(
+    async (arrayBuffer: ArrayBuffer) => {
+      if (!enableVad) {
+        return false;
+      }
+      try {
+        const context = new AudioContext();
+        const audioBuffer = await context.decodeAudioData(arrayBuffer.slice(0));
+        const channel = audioBuffer.getChannelData(0);
+        let sumSquares = 0;
+        for (let i = 0; i < channel.length; i += 1) {
+          const value = channel[i] ?? 0;
+          sumSquares += value * value;
+        }
+        const rms = Math.sqrt(sumSquares / Math.max(1, channel.length));
+        await context.close();
+        return rms < vadRmsThreshold;
+      } catch {
+        return false;
+      }
+    },
+    [enableVad, vadRmsThreshold],
+  );
 
   const clearLoopTimeout = () => {
     if (loopTimeoutRef.current) {
@@ -166,7 +202,8 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
         console.log("Voice transcript", data.text);
         const transcript = data.text.trim();
         setLastTranscript(transcript);
-        const bufferedTranscript = bufferTranscript(transcript);
+        const cleanedTranscript = normalizeTranscriptForCommand(transcript);
+        const bufferedTranscript = bufferTranscript(cleanedTranscript);
         if (shouldSendVoiceCommand(bufferedTranscript)) {
           const commandResponse = await apiClient.post<{ mission?: DrivingMissionState }>(commandEndpoint, {
             utterance: bufferedTranscript,
@@ -212,6 +249,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     shouldSendVoiceCommand,
     isLikelySilent,
     bufferTranscript,
+    normalizeTranscriptForCommand,
   ]);
 
   const status = useMemo(
@@ -250,26 +288,3 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     disable,
   };
 };
-  const isLikelySilent = useCallback(
-    async (arrayBuffer: ArrayBuffer) => {
-      if (!enableVad) {
-        return false;
-      }
-      try {
-        const context = new AudioContext();
-        const audioBuffer = await context.decodeAudioData(arrayBuffer.slice(0));
-        const channel = audioBuffer.getChannelData(0);
-        let sumSquares = 0;
-        for (let i = 0; i < channel.length; i += 1) {
-          const value = channel[i] ?? 0;
-          sumSquares += value * value;
-        }
-        const rms = Math.sqrt(sumSquares / Math.max(1, channel.length));
-        await context.close();
-        return rms < vadRmsThreshold;
-      } catch {
-        return false;
-      }
-    },
-    [enableVad, vadRmsThreshold],
-  );

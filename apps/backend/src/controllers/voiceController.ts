@@ -7,7 +7,7 @@ import type { DrivingMissionSnapshot, DrivingMissionUpdate } from "../models/sim
 import { parseVoiceMission } from "../utils/voiceCommandParser";
 import { intentLogger } from "../utils/intentLogger";
 import { mapIntentToMission } from "../utils/intentMissionMapper";
-import { sanitizeTranscript } from "../utils/voiceTranscriptSanitizer";
+import { sanitizeTranscript, type TranscriptSanitizerOptions } from "../utils/voiceTranscriptSanitizer";
 import { env } from "../config/env";
 import { matchVoiceCommandGrammar } from "../utils/voiceCommandMatcher";
 
@@ -34,6 +34,20 @@ const VOICE_COMMAND_KEYWORDS = [
   "debris",
   "camera",
 ];
+
+const buildSanitizerOptions = (): TranscriptSanitizerOptions => {
+  const options: TranscriptSanitizerOptions = {};
+  if (env.voiceCommandAllowlist) {
+    options.allowlist = env.voiceCommandAllowlist;
+  }
+  if (env.voiceCommandDenylist) {
+    options.denylist = env.voiceCommandDenylist;
+  }
+  if (env.voiceMinTokens !== undefined) {
+    options.minTokens = env.voiceMinTokens;
+  }
+  return options;
+};
 
 const isLikelyVoiceCommand = (utterance: string) => {
   const normalized = utterance.toLowerCase().trim();
@@ -75,11 +89,7 @@ class VoiceController {
 
     try {
       const result = await elevenLabsService.transcribeAudio({ audioUrl, modelId, language, prompt });
-      const sanitized = sanitizeTranscript(result.text ?? "", {
-        allowlist: env.voiceCommandAllowlist,
-        denylist: env.voiceCommandDenylist,
-        minTokens: env.voiceMinTokens,
-      });
+      const sanitized = sanitizeTranscript(result.text ?? "", buildSanitizerOptions());
       if (sanitized.rejected && sanitized.reason === "non_english") {
         const primaryModel = modelId ?? (language === "en" ? "scribe_v1" : "universal-1");
         const fallbackModel = primaryModel === "scribe_v1" ? "universal-1" : "scribe_v1";
@@ -127,11 +137,7 @@ class VoiceController {
         ...(language ? { language } : {}),
         ...(prompt ? { prompt } : {}),
       });
-      const sanitized = sanitizeTranscript(result.text ?? "", {
-        allowlist: env.voiceCommandAllowlist,
-        denylist: env.voiceCommandDenylist,
-        minTokens: env.voiceMinTokens,
-      });
+      const sanitized = sanitizeTranscript(result.text ?? "", buildSanitizerOptions());
       if (sanitized.rejected && sanitized.reason === "non_english") {
         const primaryModel = modelId ?? (language === "en" ? "scribe_v1" : "universal-1");
         const fallbackModel = primaryModel === "scribe_v1" ? "universal-1" : "scribe_v1";
@@ -199,11 +205,7 @@ class VoiceController {
       const currentSpeedMph = Number.isFinite(playerState.speedMph)
         ? playerState.speedMph
         : (playerState.speedMps ?? 0) * MPS_TO_MPH;
-      const sanitized = sanitizeTranscript(transcript, {
-        allowlist: env.voiceCommandAllowlist,
-        denylist: env.voiceCommandDenylist,
-        minTokens: env.voiceMinTokens,
-      });
+      const sanitized = sanitizeTranscript(transcript, buildSanitizerOptions());
       if (sanitized.cleaned) {
         const grammarMatch = matchVoiceCommandGrammar(sanitized.cleaned, {
           currentSpeedMph,
@@ -215,13 +217,17 @@ class VoiceController {
           const mission = this.simulationService.updateMission({
             ...grammarMatch.update,
             source: "voice",
-            note: grammarMatch.note,
+            ...(grammarMatch.note ? { note: grammarMatch.note } : {}),
           });
           const summary = this.buildVoiceSummary(mission, grammarMatch.update);
+          const asciiTranscript = sanitizeTranscript(transcript, buildSanitizerOptions())
+            .cleaned.replace(/[^\x00-\x7F]/g, " ")
+            .replace(/\s+/g, " ")
+            .trim();
           this.simulationService.updateVoiceStatus({
-            lastUtterance: sanitized.cleaned || transcript,
+            lastUtterance: asciiTranscript || sanitized.cleaned || transcript,
             rawUtterance: transcript,
-            sanitizedUtterance: sanitized.cleaned,
+            sanitizedUtterance: asciiTranscript || sanitized.cleaned,
             summary,
             mode: mission.mode,
             telemetry: { summary: 1 },
@@ -267,15 +273,15 @@ class VoiceController {
           source: "intent",
         });
         const summary = this.buildVoiceSummary(mission, patch);
-        const sanitized = sanitizeTranscript(transcript, {
-          allowlist: env.voiceCommandAllowlist,
-          denylist: env.voiceCommandDenylist,
-          minTokens: env.voiceMinTokens,
-        });
+        const sanitized = sanitizeTranscript(transcript, buildSanitizerOptions());
+        const asciiTranscript = sanitizeTranscript(transcript, buildSanitizerOptions())
+          .cleaned.replace(/[^\x00-\x7F]/g, " ")
+          .replace(/\s+/g, " ")
+          .trim();
         this.simulationService.updateVoiceStatus({
-          lastUtterance: sanitized.cleaned || transcript,
+          lastUtterance: asciiTranscript || sanitized.cleaned || transcript,
           rawUtterance: transcript,
-          sanitizedUtterance: sanitized.cleaned,
+          sanitizedUtterance: asciiTranscript || sanitized.cleaned,
           summary,
           mode: mission.mode,
           telemetry: { summary: 1 },
@@ -368,12 +374,9 @@ class VoiceController {
 
     const missionBefore = this.simulationService.getMission();
     const utteranceText = typeof utterance === "string" ? utterance : "";
-    const sanitized = sanitizeTranscript(utteranceText, {
-      allowlist: env.voiceCommandAllowlist,
-      denylist: env.voiceCommandDenylist,
-      minTokens: env.voiceMinTokens,
-    });
-    const normalizedUtterance = sanitized.cleaned.toLowerCase().trim();
+    const sanitized = sanitizeTranscript(utteranceText, buildSanitizerOptions());
+    const asciiUtterance = sanitized.cleaned.replace(/[^\x00-\x7F]/g, " ").replace(/\s+/g, " ").trim();
+    const normalizedUtterance = asciiUtterance.toLowerCase().trim();
 
     const hasExplicitOverrides =
       speedMph !== undefined ||
@@ -392,13 +395,13 @@ class VoiceController {
       sanitized.reason === "non_english"
     ) {
       this.simulationService.updateVoiceStatus({
-        lastUtterance: sanitized.cleaned || utteranceText,
+        lastUtterance: asciiUtterance || sanitized.cleaned || utteranceText,
         rawUtterance: utteranceText,
-        sanitizedUtterance: sanitized.cleaned,
+        sanitizedUtterance: asciiUtterance || sanitized.cleaned,
         summary: "Ignored non-English transcript",
         mode: missionBefore.mode,
         telemetry: { rejected: 1 },
-        rejectionReason: sanitized.reason,
+        ...(sanitized.reason ? { rejectionReason: sanitized.reason } : {}),
       });
       res.status(204).send();
       return;
@@ -408,13 +411,13 @@ class VoiceController {
       const noiseReasons = ["noise_tag", "too_short", "too_few_tokens"];
       const isNoise = sanitized.reason ? noiseReasons.includes(sanitized.reason) : false;
       this.simulationService.updateVoiceStatus({
-        lastUtterance: sanitized.cleaned || utteranceText,
+        lastUtterance: asciiUtterance || sanitized.cleaned || utteranceText,
         rawUtterance: utteranceText,
-        sanitizedUtterance: sanitized.cleaned,
+        sanitizedUtterance: asciiUtterance || sanitized.cleaned,
         summary: isNoise ? "Ignored background noise" : "Ignored voice input",
         mode: missionBefore.mode,
         telemetry: { rejected: 1, ...(isNoise ? { noise: 1 } : {}) },
-        rejectionReason: sanitized.reason,
+        ...(sanitized.reason ? { rejectionReason: sanitized.reason } : {}),
       });
       res.status(204).send();
       return;
@@ -422,9 +425,9 @@ class VoiceController {
 
     if (utteranceText && !hasExplicitOverrides && source === "voice" && !isLikelyVoiceCommand(normalizedUtterance)) {
       this.simulationService.updateVoiceStatus({
-        lastUtterance: sanitized.cleaned || utteranceText,
+        lastUtterance: asciiUtterance || sanitized.cleaned || utteranceText,
         rawUtterance: utteranceText,
-        sanitizedUtterance: sanitized.cleaned,
+        sanitizedUtterance: asciiUtterance || sanitized.cleaned,
         summary: "Ignored non-command transcript",
         mode: missionBefore.mode,
         telemetry: { rejected: 1 },
@@ -441,7 +444,7 @@ class VoiceController {
       : (playerState.speedMps ?? 0) * MPS_TO_MPH;
 
     if (typeof utterance === "string" && normalizedUtterance.length > 0) {
-      const parsed = parseVoiceMission(sanitized.cleaned, {
+      const parsed = parseVoiceMission(asciiUtterance, {
         currentSpeedMph,
         currentLaneIndex: playerState.laneIndex,
         laneCount,
@@ -586,9 +589,9 @@ class VoiceController {
       const mission = this.simulationService.updateMission(patch);
       const summary = this.buildVoiceSummary(mission, patch);
       this.simulationService.updateVoiceStatus({
-        lastUtterance: sanitized.cleaned || utteranceText,
+        lastUtterance: asciiUtterance || sanitized.cleaned || utteranceText,
         rawUtterance: utteranceText,
-        sanitizedUtterance: sanitized.cleaned,
+        sanitizedUtterance: asciiUtterance || sanitized.cleaned,
         summary,
         mode: mission.mode,
         telemetry: { summary: 1 },

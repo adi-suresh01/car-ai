@@ -37,7 +37,9 @@ const computeAutopilotControl = () => {
   const steering = clamp(laneError / (LANE_WIDTH * 0.5), -1, 1);
 
   const defaultTargetSpeed = Math.max(player.speedMph, 35);
-  let desiredSpeed = mission.mode === "cruise"
+  const speedHoldMode =
+    mission.mode === "cruise" || mission.mode === "lane_change" || mission.mode === "overtake";
+  let desiredSpeed = speedHoldMode
     ? mission.cruiseTargetSpeedMph ?? defaultTargetSpeed
     : defaultTargetSpeed;
 

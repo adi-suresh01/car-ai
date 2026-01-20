@@ -435,7 +435,9 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       });
   }
 
-  const cruiseActive = mission.mode === "cruise" && !manualCruiseCancel && !collision;
+  const speedHoldMode =
+    mission.mode === "cruise" || mission.mode === "lane_change" || mission.mode === "overtake";
+  const cruiseActive = speedHoldMode && !manualCruiseCancel && !collision;
   if (cruiseActive) {
     const targetSpeed = mission.cruiseTargetSpeedMph ?? currentSpeed;
     const speedError = targetSpeed - currentSpeed;
