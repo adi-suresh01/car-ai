@@ -142,6 +142,7 @@ interface SimulationStore {
   voiceStatus?: VoiceStatus;
   voiceHistory: Array<{ utterance: string; summary?: string; timestamp?: number }>;
   voiceListeningEnabled: boolean;
+  voiceCaptureStatus: "idle" | "recording" | "transcribing";
   dashboard: DashboardState;
   lastManualInputAt?: number;
   loadLayout: () => Promise<void>;
@@ -150,6 +151,7 @@ interface SimulationStore {
   updateControlInput: (input: ControlInput) => void;
   markManualInput: () => void;
   setVoiceListeningEnabled: (enabled: boolean) => void;
+  setVoiceCaptureStatus: (status: "idle" | "recording" | "transcribing") => void;
   tick: (dt: number) => void;
   applyMission: (mission: DrivingMissionState) => void;
   updateMission: (input: MissionUpdateInput) => Promise<void>;
@@ -250,6 +252,7 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   voiceStatus: undefined,
   voiceHistory: [],
   voiceListeningEnabled: DEFAULT_VOICE_LISTENING_ENABLED,
+  voiceCaptureStatus: "idle",
   lastManualInputAt: undefined,
   dashboard: {
     activeApp: "maps",
@@ -392,6 +395,9 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   },
   setVoiceListeningEnabled: (enabled: boolean) => {
     set({ voiceListeningEnabled: enabled });
+  },
+  setVoiceCaptureStatus: (status) => {
+    set({ voiceCaptureStatus: status });
   },
   tick: (dt: number) => {
     const state = get();

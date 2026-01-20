@@ -878,6 +878,39 @@
   accent-color: #7fd7ff;
 }
 
+.voice-status-indicator {
+  position: absolute;
+  right: 24px;
+  top: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  background: rgba(10, 18, 30, 0.8);
+  border: 1px solid rgba(90, 140, 190, 0.3);
+  color: #e5edf6;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  z-index: 20;
+}
+
+.voice-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 999px;
+  background: #a0b4c8;
+}
+
+.voice-status-recording .voice-status-dot {
+  background: #7fd7ff;
+}
+
+.voice-status-transcribing .voice-status-dot {
+  background: #ffce7a;
+}
+
 .lane-change-toast {
   position: absolute;
   top: 24px;

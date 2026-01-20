@@ -22,6 +22,7 @@ import type { VehicleState } from "../../models/simulation";
 import AutopilotController from "../../components/AutopilotController";
 import AlwaysOnVoiceListener from "../../components/AlwaysOnVoiceListener";
 import SettingsPanel from "../../components/SettingsPanel";
+import VoiceStatusIndicator from "../../components/VoiceStatusIndicator";
 import CarPlayDisplay from "../../components/CarPlayDisplay";
 import DashboardConsole from "../../components/DashboardConsole";
 import VoiceDebugPanel from "../../components/VoiceDebugPanel";
@@ -598,6 +599,7 @@ export const DriverCameraView = () => (
     <DashboardConsole />
     <CarPlayDisplay />
     <VoiceDebugPanel />
+    <VoiceStatusIndicator />
     <SettingsPanel />
     <LaneChangeToast />
   </div>

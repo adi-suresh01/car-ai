@@ -11,6 +11,7 @@ interface VoiceCaptureOptions {
   segmentMs?: number;
   enableVad?: boolean;
   vadRmsThreshold?: number;
+  onStatusChange?: (status: "idle" | "recording" | "transcribing") => void;
 }
 
 export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
@@ -215,6 +216,11 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     () => (isRecording ? "recording" : isTranscribing ? "transcribing" : "idle"),
     [isRecording, isTranscribing],
   );
+
+  const onStatusChange = options.onStatusChange;
+  useEffect(() => {
+    onStatusChange?.(status);
+  }, [status, onStatusChange]);
 
   const enable = useCallback(() => {
     setEnabled(true);
