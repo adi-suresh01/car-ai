@@ -9,6 +9,7 @@ import { intentLogger } from "../utils/intentLogger";
 import { mapIntentToMission } from "../utils/intentMissionMapper";
 import { sanitizeTranscript } from "../utils/voiceTranscriptSanitizer";
 import { env } from "../config/env";
+import { matchVoiceCommandGrammar } from "../utils/voiceCommandMatcher";
 
 const MPS_TO_MPH = 1 / 0.44704;
 const VOICE_COMMAND_KEYWORDS = [
@@ -193,9 +194,54 @@ class VoiceController {
     }
 
     try {
-      const result = await fireworksService.generateIntent({ transcript, context });
       const playerState = this.simulationService.getPlayerState();
       const laneCount = this.simulationService.getLaneCount();
+      const currentSpeedMph = Number.isFinite(playerState.speedMph)
+        ? playerState.speedMph
+        : (playerState.speedMps ?? 0) * MPS_TO_MPH;
+      const sanitized = sanitizeTranscript(transcript, {
+        allowlist: env.voiceCommandAllowlist,
+        denylist: env.voiceCommandDenylist,
+        minTokens: env.voiceMinTokens,
+      });
+      if (sanitized.cleaned) {
+        const grammarMatch = matchVoiceCommandGrammar(sanitized.cleaned, {
+          currentSpeedMph,
+          currentLaneIndex: playerState.laneIndex,
+          laneCount,
+        });
+        if (grammarMatch) {
+          const missionBefore = this.simulationService.getMission();
+          const mission = this.simulationService.updateMission({
+            ...grammarMatch.update,
+            source: "voice",
+            note: grammarMatch.note,
+          });
+          const summary = this.buildVoiceSummary(mission, grammarMatch.update);
+          this.simulationService.updateVoiceStatus({
+            lastUtterance: sanitized.cleaned || transcript,
+            rawUtterance: transcript,
+            sanitizedUtterance: sanitized.cleaned,
+            summary,
+            mode: mission.mode,
+          });
+          void intentLogger.log({
+            timestamp: new Date().toISOString(),
+            utterance: transcript,
+            requestPayload: req.body,
+            missionBefore,
+            missionAfter: mission,
+          });
+          res.json({
+            intent: { operation: "cancel" },
+            mission,
+            summary,
+            matchedBy: "grammar",
+          });
+          return;
+        }
+      }
+      const result = await fireworksService.generateIntent({ transcript, context });
       if (result.intent.operation === "takeExit" && result.intent.exitId) {
         const exists = this.simulationService.hasExit(result.intent.exitId);
         if (!exists) {
