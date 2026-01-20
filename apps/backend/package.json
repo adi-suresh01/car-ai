@@ -7,7 +7,8 @@
     "build": "tsc",
     "dev": "nodemon --watch src --exec ts-node src/server.ts",
     "start": "node dist/server.js",
-    "generate:episodes": "ts-node src/scripts/generateEpisodes.ts"
+    "generate:episodes": "ts-node src/scripts/generateEpisodes.ts",
+    "test:voice": "ts-node src/tests/voiceUtils.test.ts"
   },
   "keywords": [],
   "author": "",
