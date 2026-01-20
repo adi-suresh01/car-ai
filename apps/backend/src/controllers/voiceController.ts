@@ -65,7 +65,7 @@ class VoiceController {
   private readonly simulationService = SimulationService.getInstance();
 
   async transcribe(req: Request, res: Response) {
-    const { audioUrl, modelId, language } = req.body ?? {};
+    const { audioUrl, modelId, language, prompt } = req.body ?? {};
 
     if (!audioUrl || typeof audioUrl !== "string") {
       res.status(400).json({ error: "audioUrl is required" });
@@ -73,7 +73,7 @@ class VoiceController {
     }
 
     try {
-      const result = await elevenLabsService.transcribeAudio({ audioUrl, modelId, language });
+      const result = await elevenLabsService.transcribeAudio({ audioUrl, modelId, language, prompt });
       const sanitized = sanitizeTranscript(result.text ?? "", {
         allowlist: env.voiceCommandAllowlist,
         denylist: env.voiceCommandDenylist,
@@ -102,6 +102,7 @@ class VoiceController {
     const modelId = typeof req.query.modelId === "string" ? req.query.modelId : undefined;
     const language = typeof req.query.language === "string" ? req.query.language : undefined;
     const filename = typeof req.query.filename === "string" ? req.query.filename : undefined;
+    const prompt = typeof req.query.prompt === "string" ? req.query.prompt : undefined;
 
     const buffer = Buffer.isBuffer(req.body) ? req.body : Buffer.from(req.body ?? "");
     if (!buffer || buffer.length === 0) {
@@ -123,6 +124,7 @@ class VoiceController {
         ...(filename ? { filename } : {}),
         ...(modelId ? { modelId } : {}),
         ...(language ? { language } : {}),
+        ...(prompt ? { prompt } : {}),
       });
       const sanitized = sanitizeTranscript(result.text ?? "", {
         allowlist: env.voiceCommandAllowlist,
@@ -138,6 +140,7 @@ class VoiceController {
           ...(filename ? { filename } : {}),
           modelId: fallbackModel,
           ...(language ? { language } : {}),
+          ...(prompt ? { prompt } : {}),
         });
         res.json(fallback);
         return;

@@ -4,6 +4,7 @@ export interface TranscriptionRequestPayload {
   audioUrl: string;
   modelId?: string;
   language?: string;
+  prompt?: string;
 }
 
 export interface TranscriptionResult {

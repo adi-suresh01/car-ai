@@ -29,6 +29,7 @@ export class ElevenLabsService {
       model_id: resolvedModelId,
       // eslint-disable-next-line @typescript-eslint/naming-convention
       language: payload.language,
+      ...(payload.prompt ? { prompt: payload.prompt } : {}),
     };
 
     const response = await fetch(`${elevenLabsConfig.baseUrl}${elevenLabsConfig.speechToTextPath}`, {
@@ -82,6 +83,7 @@ export class ElevenLabsService {
     filename?: string;
     modelId?: string;
     language?: string;
+    prompt?: string;
   }): Promise<TranscriptionResult> {
     if (!elevenLabsConfig.apiKey) {
       throw new Error("ElevenLabs API key missing. Set XI_API_KEY.");
@@ -95,6 +97,9 @@ export class ElevenLabsService {
     formData.append("model_id", resolvedModelId);
     if (payload.language) {
       formData.append("language", payload.language);
+    }
+    if (payload.prompt) {
+      formData.append("prompt", payload.prompt);
     }
 
     const response = await fetch(`${elevenLabsConfig.baseUrl}${elevenLabsConfig.speechToTextPath}`, {
