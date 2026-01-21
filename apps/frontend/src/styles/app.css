@@ -37,9 +37,9 @@
 .brand-mark {
   width: 0.9rem;
   height: 2.8rem;
-  background: linear-gradient(170deg, #3cf0ff, #007bff);
+  background: linear-gradient(170deg, #7fe3ff, #1c6cff);
   border-radius: 999px;
-  box-shadow: 0 0 18px rgba(0, 123, 255, 0.65);
+  box-shadow: 0 0 22px rgba(28, 108, 255, 0.55);
 }
 
 .tagline {
