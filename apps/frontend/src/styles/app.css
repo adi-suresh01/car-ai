@@ -661,8 +661,8 @@
   padding: 0;
   list-style: none;
   display: grid;
-  gap: 4px;
-  font-size: 0.72rem;
+  gap: 6px;
+  font-size: 0.7rem;
   color: rgba(210, 224, 246, 0.92);
 }
 
