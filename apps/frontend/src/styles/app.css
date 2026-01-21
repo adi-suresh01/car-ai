@@ -684,10 +684,10 @@
   margin-top: 6px;
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.64rem;
+  gap: 6px;
+  font-size: 0.62rem;
   text-transform: uppercase;
-  letter-spacing: 0.16em;
+  letter-spacing: 0.18em;
   color: rgba(150, 168, 200, 0.85);
 }
 
