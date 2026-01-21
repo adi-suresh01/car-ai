@@ -847,8 +847,8 @@
 
 .settings-panel {
   position: absolute;
-  right: 24px;
-  bottom: 24px;
+  right: 20px;
+  bottom: 20px;
   display: flex;
   flex-direction: column;
   gap: 10px;
