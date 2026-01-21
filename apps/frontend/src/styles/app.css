@@ -44,10 +44,10 @@
 
 .tagline {
   margin: 0;
-  font-size: 0.95rem;
-  color: rgba(196, 203, 218, 0.9);
+  font-size: 0.88rem;
+  color: rgba(190, 205, 228, 0.85);
   text-transform: uppercase;
-  letter-spacing: 0.15em;
+  letter-spacing: 0.18em;
 }
 
 .simulator-layout {
