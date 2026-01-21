@@ -66,10 +66,10 @@
   display: flex;
   align-items: stretch;
   justify-content: center;
-  background: rgba(12, 14, 24, 0.58);
+  background: rgba(10, 14, 22, 0.72);
   border-radius: 28px;
-  border: 1px solid rgba(48, 68, 110, 0.32);
-  box-shadow: 0 22px 44px rgba(5, 8, 18, 0.38);
+  border: 1px solid rgba(72, 112, 170, 0.28);
+  box-shadow: 0 28px 60px rgba(5, 8, 18, 0.48);
   overflow: hidden;
   min-height: 0;
 }
