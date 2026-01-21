@@ -390,9 +390,9 @@
 
 .interior-carplay {
   position: absolute;
-  bottom: 20%;
-  right: 12%;
-  width: 240px;
+  bottom: 18%;
+  right: 10%;
+  width: 260px;
   padding: 1rem 1.1rem;
   border-radius: 20px;
   background: linear-gradient(200deg, rgba(28, 36, 54, 0.96), rgba(12, 16, 26, 0.96));
