@@ -13,7 +13,7 @@ export const buildApp = () => {
   app.use("/api/voice/webhooks/elevenlabs", express.raw({ type: "*/*" }));
   app.use("/api/voice/transcriptions/file", express.raw({ type: "*/*", limit: env.rawBodyLimit }));
 
-  const jsonParser = express.json();
+  const jsonParser = express.json({ limit: env.jsonBodyLimit });
   app.use((req, res, next) => {
     if (
       req.originalUrl === "/api/voice/webhooks/elevenlabs" ||
