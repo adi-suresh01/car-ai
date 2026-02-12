@@ -19,6 +19,13 @@ const parseCsv = (value?: string | null) => {
     .filter((entry) => entry.length > 0);
 };
 
+const parseNumber = (value?: string | null) => {
+  const raw = optional(value);
+  if (!raw) return undefined;
+  const parsed = Number(raw);
+  return Number.isFinite(parsed) ? parsed : undefined;
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? DEFAULT_PORT),
