@@ -1,10 +1,12 @@
 import cors from "cors";
 import express from "express";
 import { apiRouter } from "./routes";
+import { env } from "./config/env";
 
 export const buildApp = () => {
   const app = express();
   app.disable("x-powered-by");
+  app.set("trust proxy", env.trustProxy);
 
   app.use(cors());
   app.use("/api/voice/webhooks/elevenlabs", express.raw({ type: "*/*" }));
