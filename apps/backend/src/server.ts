@@ -37,3 +37,8 @@ process.on("SIGINT", () => shutdown("SIGINT"));
 process.on("unhandledRejection", (reason) => {
   logger.error("Unhandled promise rejection", { reason });
 });
+
+process.on("uncaughtException", (error) => {
+  logger.error("Uncaught exception", { error: error.message });
+  shutdown("SIGTERM");
+});
