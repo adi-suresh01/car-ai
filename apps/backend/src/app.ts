@@ -33,6 +33,10 @@ export const buildApp = () => {
     res.status(200).json({ status: "ready" });
   });
 
+  app.get("/live", (_req, res) => {
+    res.status(200).json({ status: "live" });
+  });
+
   app.use("/api", apiRouter);
 
   return app;
