@@ -4,6 +4,7 @@ import { apiRouter } from "./routes";
 
 export const buildApp = () => {
   const app = express();
+  app.disable("x-powered-by");
 
   app.use(cors());
   app.use("/api/voice/webhooks/elevenlabs", express.raw({ type: "*/*" }));
