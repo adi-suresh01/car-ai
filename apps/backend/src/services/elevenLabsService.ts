@@ -103,7 +103,7 @@ export class ElevenLabsService {
       formData.append("prompt", payload.prompt);
     }
 
-    const response = await fetch(`${elevenLabsConfig.baseUrl}${elevenLabsConfig.speechToTextPath}`, {
+    const response = await fetchWithRetry(`${elevenLabsConfig.baseUrl}${elevenLabsConfig.speechToTextPath}`, {
       method: "POST",
       headers: {
         "xi-api-key": elevenLabsConfig.apiKey,
