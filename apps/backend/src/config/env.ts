@@ -47,6 +47,7 @@ export const env = {
   jsonBodyLimit: optional(process.env.JSON_BODY_LIMIT) ?? "1mb",
   rawBodyLimit: optional(process.env.RAW_BODY_LIMIT) ?? "12mb",
   trustProxy: parseBoolean(process.env.TRUST_PROXY) ?? false,
+  upstreamTimeoutMs: parseNumber(process.env.UPSTREAM_TIMEOUT_MS) ?? 4500,
   voiceCommandAllowlist: parseCsv(process.env.VOICE_COMMAND_ALLOWLIST),
   voiceCommandDenylist: parseCsv(process.env.VOICE_COMMAND_DENYLIST),
   voiceMinTokens: process.env.VOICE_MIN_TOKENS ? Number(process.env.VOICE_MIN_TOKENS) : undefined,
