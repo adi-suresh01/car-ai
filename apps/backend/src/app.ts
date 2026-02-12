@@ -29,6 +29,10 @@ export const buildApp = () => {
     res.json({ status: "ok" });
   });
 
+  app.get("/ready", (_req, res) => {
+    res.status(200).json({ status: "ready" });
+  });
+
   app.use("/api", apiRouter);
 
   return app;
