@@ -7,8 +7,9 @@ export const buildApp = () => {
   const app = express();
   app.disable("x-powered-by");
   app.set("trust proxy", env.trustProxy);
+  const corsOptions = env.corsOrigins ? { origin: env.corsOrigins } : undefined;
 
-  app.use(cors());
+  app.use(cors(corsOptions));
   app.use("/api/voice/webhooks/elevenlabs", express.raw({ type: "*/*" }));
   app.use("/api/voice/transcriptions/file", express.raw({ type: "*/*", limit: "12mb" }));
 
