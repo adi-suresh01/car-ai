@@ -154,7 +154,7 @@ export class ElevenLabsService {
 
     const modelId = payload.modelId ?? "eleven_flash_v2";
 
-    const response = await fetch(
+    const response = await fetchWithRetry(
       `${elevenLabsConfig.baseUrl}${elevenLabsConfig.textToSpeechPath}/${payload.voiceId}`,
       {
         method: "POST",
