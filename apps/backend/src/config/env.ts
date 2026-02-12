@@ -49,6 +49,7 @@ export const env = {
   trustProxy: parseBoolean(process.env.TRUST_PROXY) ?? false,
   upstreamTimeoutMs: parseNumber(process.env.UPSTREAM_TIMEOUT_MS) ?? 4500,
   keepAliveTimeoutMs: parseNumber(process.env.KEEP_ALIVE_TIMEOUT_MS) ?? 65000,
+  gracefulShutdownMs: parseNumber(process.env.GRACEFUL_SHUTDOWN_MS) ?? 10000,
   voiceCommandAllowlist: parseCsv(process.env.VOICE_COMMAND_ALLOWLIST),
   voiceCommandDenylist: parseCsv(process.env.VOICE_COMMAND_DENYLIST),
   voiceMinTokens: process.env.VOICE_MIN_TOKENS ? Number(process.env.VOICE_MIN_TOKENS) : undefined,
