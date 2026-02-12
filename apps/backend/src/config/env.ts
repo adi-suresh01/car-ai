@@ -44,6 +44,7 @@ export const env = {
   fireworksRlBaseModel: optional(process.env.FIREWORKS_RL_BASE_MODEL),
   fireworksEvalSuite: optional(process.env.FIREWORKS_EVAL_SUITE),
   corsOrigins: parseCsv(process.env.CORS_ORIGINS),
+  jsonBodyLimit: optional(process.env.JSON_BODY_LIMIT) ?? "1mb",
   voiceCommandAllowlist: parseCsv(process.env.VOICE_COMMAND_ALLOWLIST),
   voiceCommandDenylist: parseCsv(process.env.VOICE_COMMAND_DENYLIST),
   voiceMinTokens: process.env.VOICE_MIN_TOKENS ? Number(process.env.VOICE_MIN_TOKENS) : undefined,
