@@ -10,3 +10,23 @@ const server = app.listen(env.port, env.host, () => {
 
 server.keepAliveTimeout = env.keepAliveTimeoutMs;
 server.headersTimeout = env.keepAliveTimeoutMs + 1000;
+
+let shuttingDown = false;
+const shutdown = (signal: NodeJS.Signals) => {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  logger.info(`Received ${signal}; starting graceful shutdown`);
+  server.close((error) => {
+    if (error) {
+      logger.error("Graceful shutdown failed", { error: error.message });
+      process.exit(1);
+      return;
+    }
+    logger.info("Server closed cleanly");
+    process.exit(0);
+  });
+  setTimeout(() => {
+    logger.error("Graceful shutdown timed out");
+    process.exit(1);
+  }, env.gracefulShutdownMs).unref();
+};
