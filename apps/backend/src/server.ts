@@ -30,3 +30,5 @@ const shutdown = (signal: NodeJS.Signals) => {
     process.exit(1);
   }, env.gracefulShutdownMs).unref();
 };
+
+process.on("SIGTERM", () => shutdown("SIGTERM"));
