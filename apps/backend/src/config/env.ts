@@ -26,6 +26,14 @@ const parseNumber = (value?: string | null) => {
   return Number.isFinite(parsed) ? parsed : undefined;
 };
 
+const parseBoolean = (value?: string | null) => {
+  const raw = optional(value);
+  if (!raw) return undefined;
+  if (raw === "true" || raw === "1") return true;
+  if (raw === "false" || raw === "0") return false;
+  return undefined;
+};
+
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   port: Number(process.env.PORT ?? DEFAULT_PORT),
