@@ -1,4 +1,5 @@
 import { fireworksConfig } from "../config/thirdParty";
+import { fetchWithRetry } from "../utils/fetchWithRetry";
 import { logger } from "../utils/logger";
 import type { IntentRequestPayload, IntentResult } from "../models/voice";
 
@@ -62,7 +63,7 @@ export class FireworksService {
       },
     };
 
-    const response = await fetch(`${fireworksConfig.baseUrl}${fireworksConfig.chatCompletionsPath}`, {
+    const response = await fetchWithRetry(`${fireworksConfig.baseUrl}${fireworksConfig.chatCompletionsPath}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
