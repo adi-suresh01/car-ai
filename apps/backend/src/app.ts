@@ -11,7 +11,7 @@ export const buildApp = () => {
 
   app.use(cors(corsOptions));
   app.use("/api/voice/webhooks/elevenlabs", express.raw({ type: "*/*" }));
-  app.use("/api/voice/transcriptions/file", express.raw({ type: "*/*", limit: "12mb" }));
+  app.use("/api/voice/transcriptions/file", express.raw({ type: "*/*", limit: env.rawBodyLimit }));
 
   const jsonParser = express.json();
   app.use((req, res, next) => {
