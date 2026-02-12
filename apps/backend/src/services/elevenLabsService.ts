@@ -1,5 +1,6 @@
 import crypto from "crypto";
 import { elevenLabsConfig } from "../config/thirdParty";
+import { fetchWithRetry } from "../utils/fetchWithRetry";
 import { logger } from "../utils/logger";
 import type {
   SpeechSynthesisRequestPayload,
@@ -32,7 +33,7 @@ export class ElevenLabsService {
       ...(payload.prompt ? { prompt: payload.prompt } : {}),
     };
 
-    const response = await fetch(`${elevenLabsConfig.baseUrl}${elevenLabsConfig.speechToTextPath}`, {
+    const response = await fetchWithRetry(`${elevenLabsConfig.baseUrl}${elevenLabsConfig.speechToTextPath}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
