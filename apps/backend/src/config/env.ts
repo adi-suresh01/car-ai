@@ -36,6 +36,7 @@ const parseBoolean = (value?: string | null) => {
 
 export const env = {
   nodeEnv: process.env.NODE_ENV ?? "development",
+  host: process.env.HOST ?? "0.0.0.0",
   port: Number(process.env.PORT ?? DEFAULT_PORT),
   xiApiKey: optional(process.env.XI_API_KEY),
   xiWebhookSecret: optional(process.env.XI_WEBHOOK_SECRET),
