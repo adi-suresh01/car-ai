@@ -131,6 +131,10 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
       setError("MediaRecorder is not supported in this browser");
       return;
     }
+    if (!navigator.mediaDevices?.getUserMedia) {
+      setError("Microphone capture is not supported in this browser");
+      return;
+    }
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
