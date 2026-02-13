@@ -2,6 +2,8 @@ import { useEffect } from "react";
 import { useSimulationStore } from "./useSimulationStore";
 import { simulationController } from "../controllers/simulationController";
 
+const SYNC_INTERVAL_MS = 1000;
+
 export const useSimulationLoop = () => {
   const tick = useSimulationStore((state) => state.tick);
   const syncTraffic = useSimulationStore((state) => state.syncTraffic);
