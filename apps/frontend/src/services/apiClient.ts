@@ -1,5 +1,9 @@
 import { API_BASE_URL, DEFAULT_REQUEST_TIMEOUT_MS } from "../constants/network";
 
+interface ApiRequestOptions {
+  timeoutMs?: number;
+}
+
 export class ApiClient {
   private readonly baseUrl: string;
   private readonly requestTimeoutMs: number;
