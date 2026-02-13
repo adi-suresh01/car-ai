@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { apiClient } from "../services/apiClient";
 import { useSimulationStore } from "../state/useSimulationStore";
 import type { DrivingMissionState } from "../models/simulation";
+import { VOICE_COMMAND_KEYWORDS } from "../constants/voice";
 
 interface VoiceCaptureOptions {
   commandEndpoint?: string;
