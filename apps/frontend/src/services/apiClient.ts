@@ -22,7 +22,7 @@ export class ApiClient {
     return `Request failed with status ${response.status}${errorText ? `: ${errorText}` : ""}`;
   }
 
-  async get<T>(path: string): Promise<T> {
+  async get<T>(path: string, options?: ApiRequestOptions): Promise<T> {
     const response = await fetch(this.resolveUrl(path));
 
     if (!response.ok) {
