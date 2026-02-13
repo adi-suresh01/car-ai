@@ -17,6 +17,11 @@ export class ApiClient {
     return `${this.baseUrl}${path}`;
   }
 
+  private async parseResponseError(response: Response): Promise<string> {
+    const errorText = await response.text();
+    return `Request failed with status ${response.status}${errorText ? `: ${errorText}` : ""}`;
+  }
+
   async get<T>(path: string): Promise<T> {
     const response = await fetch(this.resolveUrl(path));
 
