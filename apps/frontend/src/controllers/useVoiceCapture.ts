@@ -180,7 +180,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
           return;
         }
         const response = await fetch(
-          `${API_BASE_URL}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${languageParam}&prompt=${encodeURIComponent(promptHint)}`,
+          buildTranscriptionUrl(languageParam),
           {
             method: "POST",
             headers: { "Content-Type": recorder.mimeType },
