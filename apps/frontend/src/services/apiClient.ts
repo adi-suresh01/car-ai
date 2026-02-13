@@ -26,7 +26,7 @@ export class ApiClient {
     const response = await fetch(this.resolveUrl(path));
 
     if (!response.ok) {
-      throw new Error(`Request failed with status ${response.status}`);
+      throw new Error(await this.parseResponseError(response));
     }
 
     return (await response.json()) as T;
