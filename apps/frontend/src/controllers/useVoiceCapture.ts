@@ -41,29 +41,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     if (bracketed && (normalized.endsWith(")") || normalized.endsWith("]"))) {
       return false;
     }
-    const commandKeywords = [
-      "cruise",
-      "speed",
-      "mph",
-      "faster",
-      "slower",
-      "left",
-      "right",
-      "lane",
-      "overtake",
-      "gap",
-      "exit",
-      "offramp",
-      "merge",
-      "traffic",
-      "police",
-      "cop",
-      "hazard",
-      "accident",
-      "debris",
-      "camera",
-    ];
-    const hasKeyword = commandKeywords.some((keyword) => normalized.includes(keyword));
+    const hasKeyword = VOICE_COMMAND_KEYWORDS.some((keyword) => normalized.includes(keyword));
     if (!hasKeyword) {
       return false;
     }
