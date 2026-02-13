@@ -1,4 +1,4 @@
-import { API_BASE_URL } from "../constants/network";
+import { API_BASE_URL, DEFAULT_REQUEST_TIMEOUT_MS } from "../constants/network";
 
 export class ApiClient {
   private readonly baseUrl: string;
