@@ -16,6 +16,8 @@ interface VoiceCaptureOptions {
   onStatusChange?: (status: "idle" | "recording" | "transcribing") => void;
 }
 
+const MEDIA_RECORDER_MIME_TYPE = "audio/webm";
+
 export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
   const [isRecording, setIsRecording] = useState(false);
   const [isTranscribing, setIsTranscribing] = useState(false);
