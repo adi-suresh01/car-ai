@@ -28,7 +28,7 @@ export class ApiClient {
   }
 
   async post<TResponse>(path: string, body?: unknown): Promise<TResponse> {
-    const response = await fetch(`${this.baseUrl}${path}`, {
+    const response = await fetch(this.resolveUrl(path), {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
