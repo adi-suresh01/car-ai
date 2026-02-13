@@ -89,6 +89,12 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     [stripBracketed],
   );
 
+  const buildTranscriptionUrl = useCallback(
+    (languageParam: string) =>
+      `${API_BASE_URL}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${languageParam}&prompt=${encodeURIComponent(promptHint)}`,
+    [transcriptionEndpoint, options.modelId, promptHint],
+  );
+
   const isLikelySilent = useCallback(
     async (arrayBuffer: ArrayBuffer) => {
       if (!enableVad) {
