@@ -26,8 +26,12 @@ export class ApiClient {
     const controller = new AbortController();
     const timeoutMs = options?.timeoutMs ?? this.requestTimeoutMs;
     const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
-    const response = await fetch(this.resolveUrl(path), { signal: controller.signal });
-    window.clearTimeout(timeoutId);
+    let response: Response;
+    try {
+      response = await fetch(this.resolveUrl(path), { signal: controller.signal });
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       throw new Error(await this.parseResponseError(response));
