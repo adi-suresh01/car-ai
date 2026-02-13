@@ -42,10 +42,7 @@ export class ApiClient {
     });
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(
-        `Request failed with status ${response.status}${errorText ? `: ${errorText}` : ""}`,
-      );
+      throw new Error(await this.parseResponseError(response));
     }
 
     if (response.status === 204) {
