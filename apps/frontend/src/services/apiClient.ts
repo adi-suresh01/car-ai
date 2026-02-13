@@ -18,7 +18,7 @@ export class ApiClient {
   }
 
   async get<T>(path: string): Promise<T> {
-    const response = await fetch(`${this.baseUrl}${path}`);
+    const response = await fetch(this.resolveUrl(path));
 
     if (!response.ok) {
       throw new Error(`Request failed with status ${response.status}`);
