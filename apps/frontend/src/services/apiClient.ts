@@ -13,6 +13,10 @@ export class ApiClient {
     this.requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
+  private resolveUrl(path: string): string {
+    return `${this.baseUrl}${path}`;
+  }
+
   async get<T>(path: string): Promise<T> {
     const response = await fetch(`${this.baseUrl}${path}`);
 
