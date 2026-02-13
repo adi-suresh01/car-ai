@@ -127,6 +127,10 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
 
   const startRecording = useCallback(async () => {
     setError(undefined);
+    if (typeof MediaRecorder === "undefined") {
+      setError("MediaRecorder is not supported in this browser");
+      return;
+    }
     let stream: MediaStream;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: true });
