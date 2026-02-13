@@ -126,6 +126,17 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     }
   };
 
+  useEffect(() => () => {
+    if (loopTimeoutRef.current) {
+      window.clearTimeout(loopTimeoutRef.current);
+      loopTimeoutRef.current = null;
+    }
+    const recorder = mediaRecorderRef.current;
+    if (recorder && recorder.state !== "inactive") {
+      recorder.stop();
+    }
+  }, []);
+
   const stopRecording = useCallback(() => {
     if (!mediaRecorderRef.current) return;
     mediaRecorderRef.current.stop();
