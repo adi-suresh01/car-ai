@@ -29,13 +29,23 @@ export const useSimulationLoop = () => {
 
   useEffect(() => {
     const intervalId = window.setInterval(() => {
-      void syncTraffic();
-      const { player } = useSimulationStore.getState();
-      void simulationController.updatePlayer({
-        laneIndex: player.laneIndex,
-        speedMph: player.speedMph,
-        positionZ: player.positionZ,
-      });
+      if (syncInFlightRef.current) {
+        return;
+      }
+      syncInFlightRef.current = true;
+      void (async () => {
+        try {
+          await syncTraffic();
+          const { player } = useSimulationStore.getState();
+          await simulationController.updatePlayer({
+            laneIndex: player.laneIndex,
+            speedMph: player.speedMph,
+            positionZ: player.positionZ,
+          });
+        } finally {
+          syncInFlightRef.current = false;
+        }
+      })();
     }, SYNC_INTERVAL_MS);
 
     return () => {
