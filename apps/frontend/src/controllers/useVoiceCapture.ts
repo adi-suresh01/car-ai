@@ -246,6 +246,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
     isLikelySilent,
     bufferTranscript,
     normalizeTranscriptForCommand,
+    buildTranscriptionUrl,
   ]);
 
   const status = useMemo(
