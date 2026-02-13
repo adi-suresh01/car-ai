@@ -2,9 +2,11 @@ import { API_BASE_URL, DEFAULT_REQUEST_TIMEOUT_MS } from "../constants/network";
 
 export class ApiClient {
   private readonly baseUrl: string;
+  private readonly requestTimeoutMs: number;
 
   constructor(baseUrl: string = API_BASE_URL) {
     this.baseUrl = baseUrl;
+    this.requestTimeoutMs = DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
   async get<T>(path: string): Promise<T> {
