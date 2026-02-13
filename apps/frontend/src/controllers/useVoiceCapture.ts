@@ -135,7 +135,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
       setError(message);
       return;
     }
-    const recorder = new MediaRecorder(stream, { mimeType: "audio/webm" });
+    const recorder = new MediaRecorder(stream, { mimeType: MEDIA_RECORDER_MIME_TYPE });
     chunksRef.current = [];
 
     recorder.ondataavailable = (event) => {
