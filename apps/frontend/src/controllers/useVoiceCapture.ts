@@ -164,7 +164,7 @@ export const useVoiceCapture = (options: VoiceCaptureOptions = {}) => {
           return;
         }
         const response = await fetch(
-          `${import.meta.env.VITE_API_BASE_URL ?? "http://localhost:4000/api"}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${languageParam}&prompt=${encodeURIComponent(promptHint)}`,
+          `${API_BASE_URL}${transcriptionEndpoint}?modelId=${options.modelId ?? ""}&language=${languageParam}&prompt=${encodeURIComponent(promptHint)}`,
           {
             method: "POST",
             headers: { "Content-Type": recorder.mimeType },
