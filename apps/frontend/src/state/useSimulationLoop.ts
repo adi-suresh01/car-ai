@@ -35,7 +35,7 @@ export const useSimulationLoop = () => {
         speedMph: player.speedMph,
         positionZ: player.positionZ,
       });
-    }, 1000);
+    }, SYNC_INTERVAL_MS);
 
     return () => {
       window.clearInterval(intervalId);
