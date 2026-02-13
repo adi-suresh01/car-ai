@@ -41,13 +41,22 @@ export class ApiClient {
   }
 
   async post<TResponse>(path: string, body?: unknown, options?: ApiRequestOptions): Promise<TResponse> {
-    const response = await fetch(this.resolveUrl(path), {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: body !== undefined ? JSON.stringify(body) : undefined,
-    });
+    const controller = new AbortController();
+    const timeoutMs = options?.timeoutMs ?? this.requestTimeoutMs;
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    let response: Response;
+    try {
+      response = await fetch(this.resolveUrl(path), {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: body !== undefined ? JSON.stringify(body) : undefined,
+        signal: controller.signal,
+      });
+    } finally {
+      window.clearTimeout(timeoutId);
+    }
 
     if (!response.ok) {
       throw new Error(await this.parseResponseError(response));
