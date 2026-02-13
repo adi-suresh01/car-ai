@@ -23,7 +23,11 @@ export class ApiClient {
   }
 
   async get<T>(path: string, options?: ApiRequestOptions): Promise<T> {
-    const response = await fetch(this.resolveUrl(path));
+    const controller = new AbortController();
+    const timeoutMs = options?.timeoutMs ?? this.requestTimeoutMs;
+    const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+    const response = await fetch(this.resolveUrl(path), { signal: controller.signal });
+    window.clearTimeout(timeoutId);
 
     if (!response.ok) {
       throw new Error(await this.parseResponseError(response));
