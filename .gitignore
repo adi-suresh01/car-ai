@@ -21,6 +21,7 @@ apps/training/.ruff_cache/
 # AI / Claude generated
 # ==========================
 .claude/
+CLAUDE.md
 
 # ==========================
 # Environment secrets
