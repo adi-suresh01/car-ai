@@ -30,6 +30,10 @@ interface SimulationStore {
   viewMode: "driver" | "topdown";
   showDebugPanel: boolean;
 
+  autopilotEnabled: boolean;
+  autopilotReady: boolean;
+  autopilotLatencyMs: number;
+
   setConnected: (connected: boolean) => void;
   updateFromServer: (
     timestamp: number,
@@ -45,6 +49,9 @@ interface SimulationStore {
   setViewMode: (mode: "driver" | "topdown") => void;
   toggleDebugPanel: () => void;
   interpolateVehicles: (alpha: number) => void;
+  setAutopilotEnabled: (enabled: boolean) => void;
+  setAutopilotReady: (ready: boolean) => void;
+  setAutopilotLatencyMs: (ms: number) => void;
 }
 
 const DEFAULT_PLAYER: PlayerState = {
@@ -86,6 +93,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   viewMode: "driver",
   showDebugPanel: false,
 
+  autopilotEnabled: false,
+  autopilotReady: false,
+  autopilotLatencyMs: 0,
+
   setConnected: (connected) => set({ connected }),
 
   updateFromServer: (timestamp, player, vehicles, mission, collision) => {
@@ -125,6 +136,10 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   setViewMode: (mode) => set({ viewMode: mode }),
   toggleDebugPanel: () =>
     set((state) => ({ showDebugPanel: !state.showDebugPanel })),
+
+  setAutopilotEnabled: (enabled) => set({ autopilotEnabled: enabled }),
+  setAutopilotReady: (ready) => set({ autopilotReady: ready }),
+  setAutopilotLatencyMs: (ms) => set({ autopilotLatencyMs: ms }),
 
   interpolateVehicles: (alpha) => {
     set((state) => ({

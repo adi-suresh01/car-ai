@@ -5,6 +5,7 @@ import {
   stopSimulationLoop,
 } from "./state/simulationLoop";
 import { startInputListeners, stopInputListeners } from "./controllers/input";
+import { autopilot } from "./controllers/autopilot";
 import { fetchLayout } from "./services/api";
 import { DriverView } from "./scene/DriverView";
 import { TopDownView } from "./scene/TopDownView";
@@ -12,6 +13,7 @@ import { Speedometer } from "./components/HUD/Speedometer";
 import { GearIndicator } from "./components/HUD/GearIndicator";
 import { MissionStatus } from "./components/HUD/MissionStatus";
 import { VoiceIndicator } from "./components/HUD/VoiceIndicator";
+import { AutopilotIndicator } from "./components/HUD/AutopilotIndicator";
 import { CarPlayDisplay } from "./components/Dashboard/CarPlayDisplay";
 import { DashboardConsole } from "./components/Dashboard/DashboardConsole";
 import { VoiceDebugPanel } from "./components/Voice/VoiceDebugPanel";
@@ -66,6 +68,20 @@ function ViewToggle() {
   );
 }
 
+function toggleAutopilot(): void {
+  const store = useSimulationStore.getState();
+  if (!store.autopilotReady) return;
+
+  const next = !store.autopilotEnabled;
+  store.setAutopilotEnabled(next);
+
+  if (next) {
+    autopilot.start();
+  } else {
+    autopilot.stop();
+  }
+}
+
 export function App() {
   const viewMode = useSimulationStore((s) => s.viewMode);
   const showDebugPanel = useSimulationStore((s) => s.showDebugPanel);
@@ -79,10 +95,13 @@ export function App() {
         // Layout fetch failed; simulation will operate without layout data
       });
 
+    autopilot.initialize();
+
     startSimulationLoop();
     startInputListeners();
 
     return () => {
+      autopilot.stop();
       stopSimulationLoop();
       stopInputListeners();
     };
@@ -97,6 +116,9 @@ export function App() {
         e.preventDefault();
         const store = useSimulationStore.getState();
         store.setViewMode(store.viewMode === "driver" ? "topdown" : "driver");
+      }
+      if (e.key === "p" || e.key === "P") {
+        toggleAutopilot();
       }
     },
     [toggleDebugPanel]
@@ -125,6 +147,7 @@ export function App() {
         </div>
 
         <div className="hud-bottom-right">
+          <AutopilotIndicator />
           <VoiceIndicator />
           <MissionStatus />
         </div>

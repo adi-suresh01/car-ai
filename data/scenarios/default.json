@@ -1,0 +1,30 @@
+{
+  "name": "highway_default",
+  "description": "Standard 5-lane highway training scenario with mixed traffic",
+  "road": {
+    "num_lanes": 5,
+    "lane_width_meters": 3.6,
+    "lane_speed_limits_mph": [75, 70, 65, 60, 55]
+  },
+  "player": {
+    "initial_lane": 2,
+    "initial_speed_mps": 29.0,
+    "cruise_target_mph": 65.0
+  },
+  "traffic": {
+    "target_npc_count": 12,
+    "spawn_distance": -320.0,
+    "despawn_distance": 1200.0,
+    "behavior_distribution": {
+      "steady": 0.34,
+      "assertive": 0.33,
+      "cautious": 0.33
+    },
+    "initial_spacing_meters": 80.0,
+    "initial_z_offset": -200.0
+  },
+  "episode": {
+    "max_steps": 3600,
+    "collision_terminates": true
+  }
+}

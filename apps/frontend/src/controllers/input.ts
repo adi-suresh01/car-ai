@@ -1,4 +1,5 @@
 import { simulationWs } from "../services/websocket";
+import { useSimulationStore } from "../state/simulationStore";
 
 interface InputState {
   steering: number;
@@ -85,6 +86,8 @@ function handleKeyUp(e: KeyboardEvent): void {
 }
 
 function sendInput(): void {
+  if (useSimulationStore.getState().autopilotEnabled) return;
+
   if (state.steering !== 0 || state.throttle !== 0 || state.brake !== 0) {
     simulationWs.send({
       type: "player_input",
