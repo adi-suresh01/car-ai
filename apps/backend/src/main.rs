@@ -18,7 +18,7 @@ use api::types::SimulationSnapshot;
 use config::ServerConfig;
 use physics::world::World;
 use traffic::manager::TrafficManager;
-use voice::elevenlabs::{ElevenLabsClient, FireworksClient};
+use voice::elevenlabs::ElevenLabsClient;
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -36,7 +36,6 @@ async fn main() -> std::io::Result<()> {
     let world_data = web::Data::new(Mutex::new(world));
     let traffic_data = web::Data::new(Mutex::new(traffic_manager));
     let elevenlabs = web::Data::new(ElevenLabsClient::new(server_config.xi_api_key));
-    let fireworks = web::Data::new(FireworksClient::new(server_config.fireworks_api_key));
 
     let (broadcast_tx, _) = broadcast::channel::<String>(128);
     let broadcast_tx_data = web::Data::new(broadcast_tx.clone());
@@ -89,7 +88,6 @@ async fn main() -> std::io::Result<()> {
             .app_data(world_data.clone())
             .app_data(traffic_data.clone())
             .app_data(elevenlabs.clone())
-            .app_data(fireworks.clone())
             .app_data(broadcast_tx_data.clone())
             .route("/api/health", web::get().to(get_health))
             .route("/api/simulation/layout", web::get().to(get_layout))

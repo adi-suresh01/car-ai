@@ -85,7 +85,6 @@ function ConcreteBarriers() {
 }
 
 export function Scenery() {
-  const playerZ = useSimulationStore((s) => s.player.positionZ);
   const roadRight = LANE_COUNT * PHYSICS.LANE_WIDTH_METERS + 5;
 
   const signPositions = useMemo((): [number, number, number][] => {

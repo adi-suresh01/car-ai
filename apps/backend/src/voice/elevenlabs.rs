@@ -1,4 +1,4 @@
-use log::{info, warn};
+use log::warn;
 
 pub struct ElevenLabsClient {
     api_key: Option<String>,
@@ -94,69 +94,5 @@ impl ElevenLabsClient {
             .await
             .map(|b| b.to_vec())
             .map_err(|e| format!("Failed to read TTS audio: {}", e))
-    }
-}
-
-pub struct FireworksClient {
-    api_key: Option<String>,
-    http: reqwest::Client,
-}
-
-impl FireworksClient {
-    pub fn new(api_key: Option<String>) -> Self {
-        Self {
-            api_key,
-            http: reqwest::Client::new(),
-        }
-    }
-
-    pub async fn parse_intent(&self, utterance: &str) -> Result<String, String> {
-        let api_key = match &self.api_key {
-            Some(k) if !k.is_empty() => k.clone(),
-            _ => {
-                info!("Fireworks API key not configured, returning raw utterance");
-                return Ok(utterance.to_string());
-            }
-        };
-
-        let body = serde_json::json!({
-            "model": "accounts/fireworks/models/llama-v3p1-8b-instruct",
-            "messages": [
-                {
-                    "role": "system",
-                    "content": "You are a driving command parser. Parse the user's voice command into one of: cruise <speed>, lane_left, lane_right, overtake, hold. Respond with only the parsed command."
-                },
-                {
-                    "role": "user",
-                    "content": utterance
-                }
-            ],
-            "max_tokens": 50
-        });
-
-        let resp = self
-            .http
-            .post("https://api.fireworks.ai/inference/v1/chat/completions")
-            .header("Authorization", format!("Bearer {}", api_key))
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| format!("Fireworks request failed: {}", e))?;
-
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            return Err(format!("Fireworks error {}: {}", status, body));
-        }
-
-        let json: serde_json::Value = resp
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse Fireworks response: {}", e))?;
-
-        json.pointer("/choices/0/message/content")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| "No content in Fireworks response".to_string())
     }
 }

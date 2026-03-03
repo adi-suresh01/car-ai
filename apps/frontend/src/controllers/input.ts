@@ -95,6 +95,10 @@ function sendInput(): void {
   }
 }
 
+export function getInputState(): Readonly<InputState> {
+  return state;
+}
+
 export function startInputListeners(): void {
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);

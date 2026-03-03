@@ -85,6 +85,7 @@ impl SimulationSnapshot {
 #[serde(rename_all = "camelCase")]
 pub struct LaneDefinition {
     pub index: usize,
+    #[serde(rename = "type")]
     pub lane_type: String,
     pub speed_limit_mph: f64,
     pub description: String,
@@ -134,7 +135,7 @@ impl SimulationLayout {
         ];
 
         let lane_centers: Vec<f64> = (0..crate::config::NUM_LANES)
-            .map(|i| crate::physics::vehicle::lane_center(i))
+            .map(crate::physics::vehicle::lane_center)
             .collect();
 
         Self {

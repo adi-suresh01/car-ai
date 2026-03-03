@@ -116,3 +116,91 @@ fn now_ms() -> u64 {
         .unwrap_or_default()
         .as_millis() as u64
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn default_mode_is_hold() {
+        let state = MissionState::default();
+        assert_eq!(state.mode, MissionMode::Hold);
+    }
+
+    #[test]
+    fn set_cruise_transitions_to_cruise_mode() {
+        let mut state = MissionState::default();
+        state.set_cruise(65.0, MissionSource::Voice);
+        assert_eq!(state.mode, MissionMode::Cruise);
+        assert_eq!(state.cruise_target_speed_mph, 65.0);
+        assert_eq!(state.source, MissionSource::Voice);
+    }
+
+    #[test]
+    fn set_cruise_clamps_speed_to_max() {
+        let mut state = MissionState::default();
+        state.set_cruise(999.0, MissionSource::System);
+        assert!(
+            state.cruise_target_speed_mph <= crate::config::MAX_SPEED_MPH,
+            "cruise speed should be clamped to MAX_SPEED_MPH"
+        );
+    }
+
+    #[test]
+    fn set_lane_change_left_decrements_lane() {
+        let mut state = MissionState::default();
+        state.target_lane_index = 2;
+        state.set_lane_change(LaneChangeDirection::Left, 2, MissionSource::Voice);
+        assert_eq!(state.mode, MissionMode::LaneChange);
+        assert_eq!(state.target_lane_index, 1);
+        assert_eq!(state.lane_change_direction, Some(LaneChangeDirection::Left));
+    }
+
+    #[test]
+    fn set_lane_change_right_increments_lane() {
+        let mut state = MissionState::default();
+        state.set_lane_change(LaneChangeDirection::Right, 2, MissionSource::Voice);
+        assert_eq!(state.mode, MissionMode::LaneChange);
+        assert_eq!(state.target_lane_index, 3);
+        assert_eq!(state.lane_change_direction, Some(LaneChangeDirection::Right));
+    }
+
+    #[test]
+    fn set_lane_change_left_at_leftmost_does_nothing() {
+        let mut state = MissionState::default();
+        let original_mode = state.mode;
+        state.set_lane_change(LaneChangeDirection::Left, 0, MissionSource::Voice);
+        // At lane 0, moving left is impossible; mode should not change
+        assert_eq!(state.mode, original_mode, "cannot lane change left from lane 0");
+    }
+
+    #[test]
+    fn set_overtake_moves_to_left_lane() {
+        let mut state = MissionState::default();
+        state.set_overtake(2, MissionSource::Voice);
+        assert_eq!(state.mode, MissionMode::Overtake);
+        assert_eq!(state.target_lane_index, 1);
+        assert_eq!(state.return_lane_index, Some(2));
+        assert_eq!(
+            state.lane_change_direction,
+            Some(LaneChangeDirection::Left)
+        );
+    }
+
+    #[test]
+    fn set_overtake_from_leftmost_does_nothing() {
+        let mut state = MissionState::default();
+        let original_mode = state.mode;
+        state.set_overtake(0, MissionSource::Voice);
+        assert_eq!(state.mode, original_mode, "cannot overtake from lane 0");
+    }
+
+    #[test]
+    fn set_hold_transitions_to_hold_mode() {
+        let mut state = MissionState::default();
+        state.set_cruise(65.0, MissionSource::System);
+        state.set_hold(MissionSource::Manual);
+        assert_eq!(state.mode, MissionMode::Hold);
+        assert_eq!(state.source, MissionSource::Manual);
+    }
+}

@@ -1,4 +1,5 @@
 import { useSimulationStore } from "../state/simulationStore";
+import { resetInterpolation } from "../state/simulationLoop";
 import type {
   SimulationStateMessage,
   ClientMessage,
@@ -58,6 +59,7 @@ class SimulationWebSocket {
           msg.mission,
           msg.collision
         );
+        resetInterpolation();
       }
     } catch {
       // Silently drop malformed messages

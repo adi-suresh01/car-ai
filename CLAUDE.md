@@ -41,7 +41,6 @@ VoiceDrive is a **real-time driving simulator** with voice control and multi-age
 
 ### External Services
 - **ElevenLabs**: STT (streaming WebSocket) + TTS (acknowledgments)
-- **Fireworks AI**: LLM intent parsing fallback (structured function calling)
 
 ---
 
@@ -72,7 +71,7 @@ car-ai/
 │   │       ├── voice/
 │   │       │   ├── mod.rs
 │   │       │   ├── routes.rs          # Voice API endpoints
-│   │       │   ├── intent.rs          # Grammar parser + LLM fallback
+│   │       │   ├── intent.rs          # Grammar-based intent parser
 │   │       │   └── elevenlabs.rs      # ElevenLabs STT/TTS client
 │   │       ├── rl/
 │   │       │   ├── mod.rs
@@ -387,9 +386,8 @@ Build the complete Rust backend in `apps/backend/`:
    - All endpoints listed in the API contracts above
    - JSON serialization with serde
 7. **Voice routing** (`src/voice/`):
-   - Grammar-based intent parser (fast path)
+   - Grammar-based intent parser for voice command interpretation
    - Proxy to ElevenLabs for STT/TTS
-   - Proxy to Fireworks for LLM intent fallback
 8. **RL environment** (`src/rl/`):
    - Gymnasium-compatible step/reset interface
    - 12-dim observation builder
@@ -518,7 +516,6 @@ PORT=4000
 RUST_LOG=info
 XI_API_KEY=<elevenlabs-api-key>
 XI_WEBHOOK_SECRET=<elevenlabs-webhook-secret>
-FIREWORKS_API_KEY=<fireworks-api-key>
 ```
 
 Frontend `.env`:

@@ -23,7 +23,6 @@ pub struct ServerConfig {
     pub port: u16,
     pub xi_api_key: Option<String>,
     pub xi_webhook_secret: Option<String>,
-    pub fireworks_api_key: Option<String>,
 }
 
 impl ServerConfig {
@@ -35,7 +34,6 @@ impl ServerConfig {
                 .unwrap_or(4000),
             xi_api_key: std::env::var("XI_API_KEY").ok(),
             xi_webhook_secret: std::env::var("XI_WEBHOOK_SECRET").ok(),
-            fireworks_api_key: std::env::var("FIREWORKS_API_KEY").ok(),
         }
     }
 }

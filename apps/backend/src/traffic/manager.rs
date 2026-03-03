@@ -94,7 +94,7 @@ impl TrafficManager {
         }
     }
 
-    fn update_npc_behavior(&mut self, npcs: &mut Vec<Vehicle>) {
+    fn update_npc_behavior(&mut self, npcs: &mut [Vehicle]) {
         for i in 0..npcs.len() {
             if i >= self.npc_states.len() {
                 break;

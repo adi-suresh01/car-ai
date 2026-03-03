@@ -135,6 +135,92 @@ pub fn lane_center(index: usize) -> f64 {
 }
 
 pub fn closest_lane(x: f64) -> usize {
-    let lane_f = (x / LANE_WIDTH_METERS).round();
+    let lane_f = (x / LANE_WIDTH_METERS).round().max(0.0);
     (lane_f as usize).min(NUM_LANES - 1)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn make_vehicle(lane: usize) -> Vehicle {
+        Vehicle::new("test".to_string(), VehicleType::Sedan, lane)
+    }
+
+    #[test]
+    fn throttle_increases_speed() {
+        let mut v = make_vehicle(2);
+        v.throttle = 1.0;
+        let before = v.speed_mps;
+        v.step(PHYSICS_DT);
+        assert!(v.speed_mps > before, "throttle should accelerate the vehicle");
+    }
+
+    #[test]
+    fn braking_from_speed_decreases_speed() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = 20.0;
+        v.brake = 1.0;
+        let before = v.speed_mps;
+        v.step(PHYSICS_DT);
+        assert!(v.speed_mps < before, "braking should decelerate the vehicle");
+    }
+
+    #[test]
+    fn speed_never_goes_negative() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = 0.1;
+        v.brake = 1.0;
+        for _ in 0..100 {
+            v.step(PHYSICS_DT);
+        }
+        assert!(v.speed_mps >= 0.0, "speed must not go negative");
+    }
+
+    #[test]
+    fn speed_clamped_to_max() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = MAX_SPEED_MPH * MPH_TO_MPS;
+        v.throttle = 1.0;
+        v.step(PHYSICS_DT);
+        assert!(
+            v.speed_mps <= MAX_SPEED_MPH * MPH_TO_MPS,
+            "speed must not exceed max"
+        );
+    }
+
+    #[test]
+    fn steering_changes_heading() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = 20.0;
+        v.steer_angle_deg = 10.0;
+        let before = v.heading_rad;
+        v.step(PHYSICS_DT);
+        assert!(
+            (v.heading_rad - before).abs() > 1e-9,
+            "steering should change heading"
+        );
+    }
+
+    #[test]
+    fn closest_lane_clamps_negative_x() {
+        let lane = closest_lane(-100.0);
+        assert_eq!(lane, 0, "negative x should clamp to lane 0");
+    }
+
+    #[test]
+    fn closest_lane_clamps_large_x() {
+        let lane = closest_lane(10000.0);
+        assert_eq!(lane, NUM_LANES - 1, "very large x should clamp to last lane");
+    }
+
+    #[test]
+    fn gear_returns_valid_range() {
+        let mut v = make_vehicle(2);
+        for speed_mph in [0.0, 10.0, 20.0, 40.0, 65.0, 100.0] {
+            v.speed_mps = speed_mph * MPH_TO_MPS;
+            let g = v.gear();
+            assert!(g >= 1 && g <= 6, "gear {g} out of range for speed {speed_mph} mph");
+        }
+    }
 }

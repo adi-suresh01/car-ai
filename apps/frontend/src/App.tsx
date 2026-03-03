@@ -5,6 +5,7 @@ import {
   stopSimulationLoop,
 } from "./state/simulationLoop";
 import { startInputListeners, stopInputListeners } from "./controllers/input";
+import { fetchLayout } from "./services/api";
 import { DriverView } from "./scene/DriverView";
 import { TopDownView } from "./scene/TopDownView";
 import { Speedometer } from "./components/HUD/Speedometer";
@@ -71,6 +72,13 @@ export function App() {
   const toggleDebugPanel = useSimulationStore((s) => s.toggleDebugPanel);
 
   useEffect(() => {
+    const setLayout = useSimulationStore.getState().setLayout;
+    fetchLayout()
+      .then((layout) => setLayout(layout))
+      .catch(() => {
+        // Layout fetch failed; simulation will operate without layout data
+      });
+
     startSimulationLoop();
     startInputListeners();
 

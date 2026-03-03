@@ -1,5 +1,6 @@
 import { useSimulationStore } from "./simulationStore";
 import { simulationWs } from "../services/websocket";
+import { getInputState } from "../controllers/input";
 import { PHYSICS } from "../models/types";
 
 const MPH_TO_MPS = 0.44704;
@@ -12,12 +13,20 @@ let interpolationAlpha = 0;
 function clientSidePrediction(dt: number): void {
   const store = useSimulationStore.getState();
   const player = store.player;
-
-  if (player.speedMps <= 0) return;
+  const input = getInputState();
 
   const drag = PHYSICS.AERO_DRAG_COEFF * player.speedMps * player.speedMps;
-  const decel = PHYSICS.ROLLING_RESIST_MPS2 + drag;
-  const predictedSpeed = Math.max(0, player.speedMps - decel * dt);
+  const rolling = player.speedMps > 0 ? PHYSICS.ROLLING_RESIST_MPS2 : 0;
+
+  const throttleAccel = input.throttle * 6.0;
+  const brakeDecel = input.brake * PHYSICS.BRAKE_RATE_MPH_PER_S * MPH_TO_MPS;
+
+  const netAccel = throttleAccel - brakeDecel - drag - rolling;
+  const maxSpeedMps = PHYSICS.MAX_SPEED_MPH * MPH_TO_MPS;
+  const predictedSpeed = Math.min(
+    maxSpeedMps,
+    Math.max(0, player.speedMps + netAccel * dt)
+  );
   const predictedZ = player.positionZ + predictedSpeed * dt;
 
   useSimulationStore.setState({

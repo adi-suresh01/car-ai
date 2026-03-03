@@ -13,7 +13,6 @@ function TopDownCamera() {
   const { camera } = useThree();
 
   useFrame(() => {
-    const player = useSimulationStore.getState().player;
     const posX = (LANE_COUNT * PHYSICS.LANE_WIDTH_METERS) / 2;
 
     camera.position.set(posX, TOP_DOWN_HEIGHT, 0);
