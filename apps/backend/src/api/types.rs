@@ -15,6 +15,12 @@ pub struct PlayerSnapshot {
     pub heading_rad: f64,
     pub position_z: f64,
     pub gear: u8,
+    pub position_s: f64,
+    pub lateral_t: f64,
+    pub road_heading_deg: f64,
+    pub position_x_world: f64,
+    pub position_z_world: f64,
+    pub curvature: f64,
 }
 
 impl From<&Vehicle> for PlayerSnapshot {
@@ -28,6 +34,12 @@ impl From<&Vehicle> for PlayerSnapshot {
             heading_rad: v.heading_rad,
             position_z: v.position_z,
             gear: v.gear(),
+            position_s: v.position_s,
+            lateral_t: v.lateral_t,
+            road_heading_deg: v.road_heading.to_degrees(),
+            position_x_world: v.position_x,
+            position_z_world: v.position_z,
+            curvature: v.curvature,
         }
     }
 }
@@ -45,6 +57,12 @@ pub struct VehicleSnapshot {
     pub heading: [f64; 3],
     #[serde(skip_serializing_if = "Option::is_none")]
     pub behavior: Option<String>,
+    pub position_s: f64,
+    pub lateral_t: f64,
+    pub road_heading_deg: f64,
+    pub position_x_world: f64,
+    pub position_z_world: f64,
+    pub curvature: f64,
 }
 
 impl From<&Vehicle> for VehicleSnapshot {
@@ -58,6 +76,12 @@ impl From<&Vehicle> for VehicleSnapshot {
             position: [v.position_x, 0.0, v.position_z],
             heading: [v.heading_rad.sin(), 0.0, v.heading_rad.cos()],
             behavior: v.behavior.clone(),
+            position_s: v.position_s,
+            lateral_t: v.lateral_t,
+            road_heading_deg: v.road_heading.to_degrees(),
+            position_x_world: v.position_x,
+            position_z_world: v.position_z,
+            curvature: v.curvature,
         }
     }
 }

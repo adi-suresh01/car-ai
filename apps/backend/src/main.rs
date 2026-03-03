@@ -3,6 +3,7 @@ mod config;
 mod mission;
 mod physics;
 mod rl;
+mod route;
 mod scenario;
 mod traffic;
 mod voice;
@@ -19,6 +20,7 @@ use api::types::SimulationSnapshot;
 use config::ServerConfig;
 use physics::world::World;
 use rl::recorder::EpisodeRecorder;
+use route::service::RouteService;
 use scenario::loader::ScenarioLoader;
 use traffic::manager::TrafficManager;
 use voice::elevenlabs::ElevenLabsClient;
@@ -48,6 +50,8 @@ async fn main() -> std::io::Result<()> {
 
     let recorder = EpisodeRecorder::new();
     let recorder_data = web::Data::new(Mutex::new(recorder));
+
+    let route_service = web::Data::new(RouteService::new());
 
     let (broadcast_tx, _) = broadcast::channel::<String>(128);
     let broadcast_tx_data = web::Data::new(broadcast_tx.clone());
@@ -111,6 +115,7 @@ async fn main() -> std::io::Result<()> {
             .app_data(broadcast_tx_data.clone())
             .app_data(scenario_data.clone())
             .app_data(recorder_data.clone())
+            .app_data(route_service.clone())
             .route("/api/health", web::get().to(get_health))
             .route("/api/simulation/layout", web::get().to(get_layout))
             .route("/api/simulation/state", web::get().to(get_state))
@@ -133,6 +138,18 @@ async fn main() -> std::io::Result<()> {
             .route(
                 "/api/rl/record/status",
                 web::get().to(get_record_status),
+            )
+            .route(
+                "/api/route/plan",
+                web::post().to(api::route::post_route_plan),
+            )
+            .route(
+                "/api/route/geometry",
+                web::get().to(api::route::get_route_geometry),
+            )
+            .route(
+                "/api/route/directions",
+                web::get().to(api::route::get_route_directions),
             )
             .route(
                 "/api/voice/transcribe",

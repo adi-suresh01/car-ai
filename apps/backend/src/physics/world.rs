@@ -2,6 +2,7 @@ use crate::config::*;
 use crate::mission::state::MissionState;
 use crate::physics::spatial::check_player_collisions_spatial;
 use crate::physics::vehicle::{Vehicle, VehicleType};
+use crate::route::geometry::RoadSpline;
 
 pub struct World {
     pub player: Vehicle,
@@ -10,6 +11,7 @@ pub struct World {
     pub collision: bool,
     pub tick: u64,
     pub time_s: f64,
+    pub road_spline: Option<RoadSpline>,
 }
 
 impl World {
@@ -23,17 +25,36 @@ impl World {
             collision: false,
             tick: 0,
             time_s: 0.0,
+            road_spline: None,
         }
+    }
+
+    #[allow(dead_code)]
+    pub fn set_road_spline(&mut self, spline: RoadSpline) {
+        self.road_spline = Some(spline);
+    }
+
+    #[allow(dead_code)]
+    pub fn clear_road_spline(&mut self) {
+        self.road_spline = None;
     }
 
     pub fn step(&mut self) {
         let dt = PHYSICS_DT;
 
         self.apply_mission_control(dt);
-        self.player.step(dt);
 
-        for npc in &mut self.npcs {
-            npc.step(dt);
+        if let Some(road) = self.road_spline.take() {
+            self.player.step_on_road(&road, dt);
+            for npc in &mut self.npcs {
+                npc.step_on_road(&road, dt);
+            }
+            self.road_spline = Some(road);
+        } else {
+            self.player.step(dt);
+            for npc in &mut self.npcs {
+                npc.step(dt);
+            }
         }
 
         self.collision = check_player_collisions_spatial(&self.player, &self.npcs);

@@ -6,6 +6,9 @@ import type {
   SimulationLayout,
   VoiceCommandEntry,
   ScenarioDefinition,
+  RouteGeometry,
+  RouteSummary,
+  TurnDirection,
 } from "../models/types";
 
 interface InterpolatedVehicle extends VehicleState {
@@ -43,6 +46,17 @@ interface SimulationStore {
 
   viewTransitionProgress: number;
 
+  routeGeometry: RouteGeometry | null;
+  routeSummary: RouteSummary | null;
+  routeDirections: TurnDirection[];
+  currentDirectionIndex: number;
+  distanceRemaining: number;
+  etaSeconds: number;
+  routeLoading: boolean;
+  routeError: string | null;
+  playerPositionS: number;
+  playerLateralT: number;
+
   setConnected: (connected: boolean) => void;
   updateFromServer: (
     timestamp: number,
@@ -68,6 +82,14 @@ interface SimulationStore {
   setActiveScenarioId: (id: string | null) => void;
   setScenariosLoading: (loading: boolean) => void;
   setViewTransitionProgress: (progress: number) => void;
+
+  setRouteGeometry: (geometry: RouteGeometry | null) => void;
+  setRouteSummary: (summary: RouteSummary | null) => void;
+  setRouteDirections: (directions: TurnDirection[]) => void;
+  setCurrentDirectionIndex: (index: number) => void;
+  updateNavProgress: (positionS: number, lateralT: number) => void;
+  setRouteLoading: (loading: boolean) => void;
+  setRouteError: (error: string | null) => void;
 }
 
 const DEFAULT_PLAYER: PlayerState = {
@@ -79,6 +101,12 @@ const DEFAULT_PLAYER: PlayerState = {
   headingRad: 0,
   positionZ: 0,
   gear: 1,
+  positionS: 0,
+  lateralT: 0,
+  roadHeadingDeg: 0,
+  positionXWorld: 0,
+  positionZWorld: 0,
+  curvature: 0,
 };
 
 const DEFAULT_MISSION: MissionState = {
@@ -121,6 +149,17 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
 
   viewTransitionProgress: 1,
 
+  routeGeometry: null,
+  routeSummary: null,
+  routeDirections: [],
+  currentDirectionIndex: 0,
+  distanceRemaining: 0,
+  etaSeconds: 0,
+  routeLoading: false,
+  routeError: null,
+  playerPositionS: 0,
+  playerLateralT: 0,
+
   setConnected: (connected) => set({ connected }),
 
   updateFromServer: (timestamp, player, vehicles, mission, collision) => {
@@ -146,6 +185,11 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
       mission,
       collision,
     });
+
+    // Update navigation progress from server-provided Frenet coordinates
+    if (player.positionS !== undefined) {
+      get().updateNavProgress(player.positionS, player.lateralT ?? 0);
+    }
   },
 
   setLayout: (layout) => set({ layout }),
@@ -172,6 +216,35 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   setActiveScenarioId: (id) => set({ activeScenarioId: id }),
   setScenariosLoading: (loading) => set({ scenariosLoading: loading }),
   setViewTransitionProgress: (progress) => set({ viewTransitionProgress: progress }),
+
+  setRouteGeometry: (geometry) => set({ routeGeometry: geometry }),
+  setRouteSummary: (summary) => set({ routeSummary: summary }),
+  setRouteDirections: (directions) => set({ routeDirections: directions }),
+  setCurrentDirectionIndex: (index) => set({ currentDirectionIndex: index }),
+  updateNavProgress: (positionS, lateralT) => {
+    const state = get();
+    const totalLength = state.routeGeometry?.totalLength ?? 0;
+    const distanceRemaining = Math.max(0, totalLength - positionS);
+
+    const speedMps = state.player.speedMps;
+    const etaSeconds = speedMps > 0.5 ? distanceRemaining / speedMps : 0;
+
+    let dirIndex = state.currentDirectionIndex;
+    const dirs = state.routeDirections;
+    while (dirIndex < dirs.length - 1 && dirs[dirIndex].s < positionS) {
+      dirIndex++;
+    }
+
+    set({
+      playerPositionS: positionS,
+      playerLateralT: lateralT,
+      distanceRemaining,
+      etaSeconds,
+      currentDirectionIndex: dirIndex,
+    });
+  },
+  setRouteLoading: (loading) => set({ routeLoading: loading }),
+  setRouteError: (error) => set({ routeError: error }),
 
   interpolateVehicles: (alpha) => {
     const smoothAlpha = 1 - Math.pow(1 - Math.min(1, alpha), 3);

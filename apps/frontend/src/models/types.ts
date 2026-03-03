@@ -22,6 +22,12 @@ export interface PlayerState {
   headingRad: number;
   positionZ: number;
   gear: number;
+  positionS: number;
+  lateralT: number;
+  roadHeadingDeg: number;
+  positionXWorld: number;
+  positionZWorld: number;
+  curvature: number;
 }
 
 export type NPCBehavior = "aggressive" | "defensive" | "cruiser";
@@ -140,3 +146,54 @@ export const PHYSICS = {
   AERO_DRAG_COEFF: 0.0032,
   BRAKE_RATE_MPH_PER_S: 90,
 } as const;
+
+export interface RouteControlPoint {
+  x: number;
+  z: number;
+  heading: number;
+  curvature: number;
+  s: number;
+}
+
+export interface RouteGeometry {
+  controlPoints: RouteControlPoint[];
+  laneCount: number;
+  laneWidth: number;
+  totalLength: number;
+  speedLimits: Array<{ s: number; speedMph: number }>;
+}
+
+export interface RouteSummary {
+  distance: number;
+  duration: number;
+  turnCount: number;
+  previewPolyline: Array<[number, number]>;
+}
+
+export type TurnType =
+  | "straight"
+  | "slight_left"
+  | "slight_right"
+  | "left"
+  | "right"
+  | "sharp_left"
+  | "sharp_right"
+  | "hairpin_left"
+  | "hairpin_right"
+  | "arrive";
+
+export interface TurnDirection {
+  instruction: string;
+  distanceMeters: number;
+  s: number;
+  turnType: TurnType;
+}
+
+export interface NavigationState {
+  route: RouteSummary | null;
+  geometry: RouteGeometry | null;
+  directions: TurnDirection[];
+  currentDirectionIndex: number;
+  distanceRemaining: number;
+  etaSeconds: number;
+}

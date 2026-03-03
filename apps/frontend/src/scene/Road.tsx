@@ -1,13 +1,23 @@
-import { useMemo, useRef } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useSimulationStore } from "../state/simulationStore";
-import { PHYSICS } from "../models/types";
+import {
+  sampleSpline,
+  buildRoadMesh,
+  buildLaneMarkings,
+  buildGuardrailPositions,
+  buildTreePositions,
+  generateMockRouteGeometry,
+  generateMockDirections,
+  generateMockRouteSummary,
+  interpolateSampleAtS,
+  type SplineSample,
+} from "./roadSpline";
+import type { RouteGeometry } from "../models/types";
 
-const ROAD_LENGTH = 1200;
-const ROAD_SEGMENT_COUNT = 60;
-const LANE_COUNT = 5;
-const TOTAL_ROAD_WIDTH = LANE_COUNT * PHYSICS.LANE_WIDTH_METERS + 4;
+const TREE_COUNT = 200;
+const GUARDRAIL_SPACING = 4;
 
 function createAsphaltTexture(): THREE.DataTexture {
   const size = 256;
@@ -26,7 +36,7 @@ function createAsphaltTexture(): THREE.DataTexture {
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(4, ROAD_LENGTH / 8);
+  texture.repeat.set(4, 60);
   texture.needsUpdate = true;
   return texture;
 }
@@ -46,7 +56,7 @@ function createNormalTexture(): THREE.DataTexture {
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(4, ROAD_LENGTH / 8);
+  texture.repeat.set(4, 60);
   texture.needsUpdate = true;
   return texture;
 }
@@ -67,132 +77,250 @@ function createRoughnessTexture(): THREE.DataTexture {
   const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
   texture.wrapS = THREE.RepeatWrapping;
   texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(4, ROAD_LENGTH / 8);
+  texture.repeat.set(4, 60);
   texture.needsUpdate = true;
   return texture;
 }
 
-function LaneMarkings() {
-  const groupRef = useRef<THREE.Group>(null);
-  const playerZ = useSimulationStore((s) => s.player.positionZ);
+interface RoadGeometryState {
+  samples: SplineSample[];
+  geometry: RouteGeometry;
+}
 
-  const markingGeometry = useMemo(() => {
-    return new THREE.PlaneGeometry(0.15, 3);
-  }, []);
+function useRoadGeometry(): RoadGeometryState {
+  const routeGeometry = useSimulationStore((s) => s.routeGeometry);
 
-  const solidGeometry = useMemo(() => {
-    return new THREE.PlaneGeometry(0.15, ROAD_LENGTH);
-  }, []);
+  return useMemo(() => {
+    const geo = routeGeometry ?? generateMockRouteGeometry();
+    const samples = sampleSpline(geo);
+    return { samples, geometry: geo };
+  }, [routeGeometry]);
+}
 
-  const dashPositions = useMemo(() => {
-    const positions: number[] = [];
-    for (let z = -ROAD_LENGTH / 2; z < ROAD_LENGTH / 2; z += 9) {
-      positions.push(z);
-    }
-    return positions;
-  }, []);
+function RoadSurface({ samples, geometry }: RoadGeometryState) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const playerOriginRef = useRef(new THREE.Vector3());
+
+  const textures = useMemo(() => ({
+    diffuse: createAsphaltTexture(),
+    normal: createNormalTexture(),
+    roughness: createRoughnessTexture(),
+  }), []);
+
+  const roadBufferGeom = useMemo(() => {
+    const meshData = buildRoadMesh(samples, geometry.laneCount, geometry.laneWidth);
+    const bufferGeom = new THREE.BufferGeometry();
+    bufferGeom.setAttribute("position", new THREE.BufferAttribute(meshData.positions, 3));
+    bufferGeom.setAttribute("normal", new THREE.BufferAttribute(meshData.normals, 3));
+    bufferGeom.setAttribute("uv", new THREE.BufferAttribute(meshData.uvs, 2));
+    bufferGeom.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
+    return bufferGeom;
+  }, [samples, geometry]);
 
   useFrame(() => {
-    if (groupRef.current) {
-      const offsetZ = Math.floor(playerZ / 9) * 9;
-      groupRef.current.position.z = -offsetZ;
+    const store = useSimulationStore.getState();
+    const posS = store.playerPositionS;
+    const interpSample = interpolateSampleAtS(samples, posS);
+
+    playerOriginRef.current.copy(interpSample.position);
+
+    if (meshRef.current) {
+      meshRef.current.position.set(
+        -playerOriginRef.current.x,
+        0,
+        -playerOriginRef.current.z
+      );
     }
   });
 
-  const laneEdges = useMemo(() => {
-    const edges: { x: number; isDashed: boolean }[] = [];
-    for (let i = 0; i <= LANE_COUNT; i++) {
-      const x = i * PHYSICS.LANE_WIDTH_METERS;
-      const isEdge = i === 0 || i === LANE_COUNT;
-      edges.push({ x, isDashed: !isEdge });
+  return (
+    <mesh ref={meshRef} geometry={roadBufferGeom} receiveShadow>
+      <meshStandardMaterial
+        map={textures.diffuse}
+        normalMap={textures.normal}
+        roughnessMap={textures.roughness}
+        roughness={0.85}
+        metalness={0.05}
+        color={0x3a3a3a}
+      />
+    </mesh>
+  );
+}
+
+function LaneMarkings({ samples, geometry }: RoadGeometryState) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  const markings = useMemo(
+    () => buildLaneMarkings(samples, geometry.laneCount, geometry.laneWidth),
+    [samples, geometry]
+  );
+
+  const solidGeometries = useMemo(() => {
+    return markings.solid.map((strip) => {
+      const bufferGeom = new THREE.BufferGeometry();
+      bufferGeom.setAttribute("position", new THREE.BufferAttribute(strip.positions, 3));
+      bufferGeom.setAttribute("normal", new THREE.BufferAttribute(strip.normals, 3));
+      bufferGeom.setAttribute("uv", new THREE.BufferAttribute(strip.uvs, 2));
+      bufferGeom.setIndex(new THREE.BufferAttribute(strip.indices, 1));
+      return bufferGeom;
+    });
+  }, [markings]);
+
+  const dashedGeometries = useMemo(() => {
+    return markings.dashed.map((strip) => {
+      const bufferGeom = new THREE.BufferGeometry();
+      bufferGeom.setAttribute("position", new THREE.BufferAttribute(strip.positions, 3));
+      bufferGeom.setAttribute("normal", new THREE.BufferAttribute(strip.normals, 3));
+      bufferGeom.setAttribute("uv", new THREE.BufferAttribute(strip.uvs, 2));
+      bufferGeom.setIndex(new THREE.BufferAttribute(strip.indices, 1));
+      return bufferGeom;
+    });
+  }, [markings]);
+
+  useFrame(() => {
+    const store = useSimulationStore.getState();
+    const posS = store.playerPositionS;
+    const interpSample = interpolateSampleAtS(samples, posS);
+
+    if (groupRef.current) {
+      groupRef.current.position.set(
+        -interpSample.position.x,
+        0,
+        -interpSample.position.z
+      );
     }
-    return edges;
-  }, []);
+  });
 
   return (
-    <group ref={groupRef} position={[0, 0.02, 0]}>
-      {laneEdges.map((edge, edgeIdx) =>
-        edge.isDashed ? (
-          dashPositions.map((z, dashIdx) => (
-            <mesh
-              key={`d-${edgeIdx}-${dashIdx}`}
-              geometry={markingGeometry}
-              position={[edge.x, 0, z]}
-              rotation={[-Math.PI / 2, 0, 0]}
-            >
-              <meshStandardMaterial
-                color={0xffffff}
-                emissive={0xcccccc}
-                emissiveIntensity={0.3}
-                transparent
-                opacity={0.85}
-              />
-            </mesh>
-          ))
-        ) : (
-          <mesh
-            key={`s-${edgeIdx}`}
-            geometry={solidGeometry}
-            position={[edge.x, 0, 0]}
-            rotation={[-Math.PI / 2, 0, 0]}
-          >
-            <meshStandardMaterial
-              color={0xffdd44}
-              emissive={0xffaa00}
-              emissiveIntensity={0.5}
-            />
-          </mesh>
-        )
-      )}
+    <group ref={groupRef}>
+      {solidGeometries.map((geom, i) => (
+        <mesh key={`solid-${i}`} geometry={geom}>
+          <meshStandardMaterial
+            color={0xffdd44}
+            emissive={0xffaa00}
+            emissiveIntensity={0.5}
+          />
+        </mesh>
+      ))}
+      {dashedGeometries.map((geom, i) => (
+        <mesh key={`dashed-${i}`} geometry={geom}>
+          <meshStandardMaterial
+            color={0xffffff}
+            emissive={0xcccccc}
+            emissiveIntensity={0.3}
+            transparent
+            opacity={0.85}
+          />
+        </mesh>
+      ))}
     </group>
   );
 }
 
-function GuardRails() {
-  const playerZ = useSimulationStore((s) => s.player.positionZ);
+function GuardRails({ samples, geometry }: RoadGeometryState) {
+  const leftMeshRef = useRef<THREE.InstancedMesh>(null);
+  const rightMeshRef = useRef<THREE.InstancedMesh>(null);
   const groupRef = useRef<THREE.Group>(null);
 
-  const postGeometry = useMemo(() => {
-    return new THREE.BoxGeometry(0.1, 0.8, 0.1);
-  }, []);
+  const railData = useMemo(
+    () => buildGuardrailPositions(samples, geometry.laneCount, geometry.laneWidth, GUARDRAIL_SPACING),
+    [samples, geometry]
+  );
 
-  const railGeometry = useMemo(() => {
-    return new THREE.BoxGeometry(0.05, 0.12, ROAD_LENGTH);
-  }, []);
+  const postGeom = useMemo(() => new THREE.BoxGeometry(0.1, 0.8, 0.1), []);
 
-  const postPositions = useMemo(() => {
-    const positions: number[] = [];
-    for (let z = -ROAD_LENGTH / 2; z < ROAD_LENGTH / 2; z += 4) {
-      positions.push(z);
+  useEffect(() => {
+    if (leftMeshRef.current) {
+      railData.left.forEach((matrix, i) => {
+        leftMeshRef.current!.setMatrixAt(i, matrix);
+      });
+      leftMeshRef.current.instanceMatrix.needsUpdate = true;
     }
-    return positions;
-  }, []);
+    if (rightMeshRef.current) {
+      railData.right.forEach((matrix, i) => {
+        rightMeshRef.current!.setMatrixAt(i, matrix);
+      });
+      rightMeshRef.current.instanceMatrix.needsUpdate = true;
+    }
+  }, [railData]);
 
   useFrame(() => {
+    const store = useSimulationStore.getState();
+    const posS = store.playerPositionS;
+    const interpSample = interpolateSampleAtS(samples, posS);
+
     if (groupRef.current) {
-      groupRef.current.position.z = -Math.floor(playerZ / 4) * 4;
+      groupRef.current.position.set(
+        -interpSample.position.x,
+        0,
+        -interpSample.position.z
+      );
     }
   });
 
-  const leftX = -1.2;
-  const rightX = LANE_COUNT * PHYSICS.LANE_WIDTH_METERS + 1.2;
+  const maxCount = Math.max(railData.left.length, railData.right.length, 1);
 
   return (
     <group ref={groupRef}>
-      <mesh geometry={railGeometry} position={[leftX, 0.65, 0]}>
+      <instancedMesh
+        ref={leftMeshRef}
+        args={[postGeom, undefined, maxCount]}
+        count={railData.left.length}
+      >
         <meshStandardMaterial color={0x888888} metalness={0.8} roughness={0.3} />
-      </mesh>
-      <mesh geometry={railGeometry} position={[rightX, 0.65, 0]}>
+      </instancedMesh>
+      <instancedMesh
+        ref={rightMeshRef}
+        args={[postGeom, undefined, maxCount]}
+        count={railData.right.length}
+      >
         <meshStandardMaterial color={0x888888} metalness={0.8} roughness={0.3} />
-      </mesh>
+      </instancedMesh>
+    </group>
+  );
+}
 
-      {postPositions.map((z, i) => (
-        <group key={i}>
-          <mesh geometry={postGeometry} position={[leftX, 0.4, z]}>
-            <meshStandardMaterial color={0x666666} metalness={0.6} roughness={0.4} />
+function RoadsideTrees({ samples, geometry }: RoadGeometryState) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  const treeData = useMemo(
+    () => buildTreePositions(samples, geometry.laneCount, geometry.laneWidth, TREE_COUNT, 42),
+    [samples, geometry]
+  );
+
+  useFrame(() => {
+    const store = useSimulationStore.getState();
+    const posS = store.playerPositionS;
+    const interpSample = interpolateSampleAtS(samples, posS);
+
+    if (groupRef.current) {
+      groupRef.current.position.set(
+        -interpSample.position.x,
+        0,
+        -interpSample.position.z
+      );
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      {treeData.map((tree, i) => (
+        <group key={i} position={[tree.position.x, tree.position.y, tree.position.z]} scale={tree.scale}>
+          <mesh position={[0, tree.trunkHeight / 2, 0]} castShadow>
+            <cylinderGeometry args={[0.15, 0.25, tree.trunkHeight, 6]} />
+            <meshStandardMaterial color={0x4a3520} roughness={0.9} />
           </mesh>
-          <mesh geometry={postGeometry} position={[rightX, 0.4, z]}>
-            <meshStandardMaterial color={0x666666} metalness={0.6} roughness={0.4} />
+          <mesh position={[0, tree.trunkHeight + 1.5, 0]} castShadow>
+            <coneGeometry args={[2.2, 4, 7]} />
+            <meshStandardMaterial color={0x1a4a1a} roughness={0.85} />
+          </mesh>
+          <mesh position={[0, tree.trunkHeight + 3.0, 0]} castShadow>
+            <coneGeometry args={[1.6, 3, 7]} />
+            <meshStandardMaterial color={0x1d5a1d} roughness={0.85} />
+          </mesh>
+          <mesh position={[0, tree.trunkHeight + 4.2, 0]} castShadow>
+            <coneGeometry args={[1.0, 2.2, 6]} />
+            <meshStandardMaterial color={0x206620} roughness={0.85} />
           </mesh>
         </group>
       ))}
@@ -200,49 +328,89 @@ function GuardRails() {
   );
 }
 
-export function Road() {
-  const roadRef = useRef<THREE.Mesh>(null);
-  const playerZ = useSimulationStore((s) => s.player.positionZ);
+function TerrainPlane({ samples }: { samples: SplineSample[] }) {
+  const groupRef = useRef<THREE.Group>(null);
 
-  const textures = useMemo(() => {
-    return {
-      diffuse: createAsphaltTexture(),
-      normal: createNormalTexture(),
-      roughness: createRoughnessTexture(),
-    };
+  const groundTexture = useMemo(() => {
+    const size = 256;
+    const data = new Uint8Array(size * size * 4);
+    for (let i = 0; i < size * size; i++) {
+      const noise = Math.random() * 15;
+      const idx = i * 4;
+      data[idx] = 35 + noise;
+      data[idx + 1] = 55 + noise;
+      data[idx + 2] = 28 + noise;
+      data[idx + 3] = 255;
+    }
+    const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(80, 80);
+    tex.needsUpdate = true;
+    return tex;
   }, []);
 
   useFrame(() => {
-    if (textures.diffuse) {
-      textures.diffuse.offset.y = -playerZ / 8;
-      textures.normal.offset.y = -playerZ / 8;
-      textures.roughness.offset.y = -playerZ / 8;
+    const store = useSimulationStore.getState();
+    const posS = store.playerPositionS;
+    const interpSample = interpolateSampleAtS(samples, posS);
+
+    if (groupRef.current) {
+      groupRef.current.position.set(
+        -interpSample.position.x,
+        -0.05,
+        -interpSample.position.z
+      );
     }
   });
 
-  const roadCenter = (LANE_COUNT * PHYSICS.LANE_WIDTH_METERS) / 2;
+  const terrainGeom = useMemo(() => {
+    if (samples.length < 2) return new THREE.PlaneGeometry(1600, 1600);
+
+    const center = samples[Math.floor(samples.length / 2)].position;
+    const geom = new THREE.PlaneGeometry(2000, 2000, 1, 1);
+    geom.translate(center.x, center.z, 0);
+    return geom;
+  }, [samples]);
 
   return (
-    <group>
-      <mesh
-        ref={roadRef}
-        rotation={[-Math.PI / 2, 0, 0]}
-        position={[roadCenter, 0, 0]}
-        receiveShadow
-      >
-        <planeGeometry args={[TOTAL_ROAD_WIDTH, ROAD_LENGTH, ROAD_SEGMENT_COUNT, 1]} />
+    <group ref={groupRef}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={terrainGeom} receiveShadow>
         <meshStandardMaterial
-          map={textures.diffuse}
-          normalMap={textures.normal}
-          roughnessMap={textures.roughness}
-          roughness={0.85}
-          metalness={0.05}
-          color={0x3a3a3a}
+          map={groundTexture}
+          color={0x2d4a1a}
+          roughness={0.95}
+          metalness={0}
         />
       </mesh>
-
-      <LaneMarkings />
-      <GuardRails />
     </group>
   );
 }
+
+export function Road() {
+  const roadState = useRoadGeometry();
+
+  useEffect(() => {
+    const store = useSimulationStore.getState();
+    if (!store.routeGeometry) {
+      const mockGeo = generateMockRouteGeometry();
+      const mockDirs = generateMockDirections(mockGeo);
+      const mockSummary = generateMockRouteSummary(mockGeo, mockDirs);
+      store.setRouteGeometry(mockGeo);
+      store.setRouteDirections(mockDirs);
+      store.setRouteSummary(mockSummary);
+    }
+  }, []);
+
+  return (
+    <group>
+      <TerrainPlane samples={roadState.samples} />
+      <RoadSurface {...roadState} />
+      <LaneMarkings {...roadState} />
+      <GuardRails {...roadState} />
+      <RoadsideTrees {...roadState} />
+    </group>
+  );
+}
+
+export { useRoadGeometry, type RoadGeometryState };

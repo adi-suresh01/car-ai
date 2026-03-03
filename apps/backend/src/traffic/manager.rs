@@ -121,6 +121,10 @@ impl TrafficManager {
             vehicle.heading_rad = 0.0;
             vehicle.lateral_offset = 0.0;
             vehicle.behavior = None;
+            vehicle.position_s = 0.0;
+            vehicle.lateral_t = 0.0;
+            vehicle.road_heading = 0.0;
+            vehicle.curvature = 0.0;
             self.recycled_vehicles.push(vehicle);
         }
     }
@@ -144,6 +148,10 @@ impl TrafficManager {
             v.heading_rad = 0.0;
             v.lateral_offset = 0.0;
             v.behavior = None;
+            v.position_s = 0.0;
+            v.lateral_t = 0.0;
+            v.road_heading = 0.0;
+            v.curvature = 0.0;
             v
         } else {
             Vehicle::new(id, vehicle_type, lane)

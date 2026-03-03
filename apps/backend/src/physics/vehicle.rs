@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 
 use crate::config::*;
+use crate::route::geometry::RoadSpline;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
@@ -48,6 +49,10 @@ pub struct Vehicle {
     pub throttle: f64,
     pub brake: f64,
     pub behavior: Option<String>,
+    pub position_s: f64,
+    pub lateral_t: f64,
+    pub road_heading: f64,
+    pub curvature: f64,
 }
 
 impl Vehicle {
@@ -65,6 +70,10 @@ impl Vehicle {
             throttle: 0.0,
             brake: 0.0,
             behavior: None,
+            position_s: 0.0,
+            lateral_t: 0.0,
+            road_heading: 0.0,
+            curvature: 0.0,
         }
     }
 
@@ -117,6 +126,52 @@ impl Vehicle {
         self.lateral_offset = self.position_x - target_x;
 
         self.lane_index = closest_lane(self.position_x);
+    }
+
+    pub fn step_on_road(&mut self, road: &RoadSpline, dt: f64) {
+        let max_speed_mps = MAX_SPEED_MPH * MPH_TO_MPS;
+
+        let accel = self.throttle * 6.0;
+        let decel = self.brake * BRAKE_RATE_MPH_PER_S * MPH_TO_MPS;
+        let drag = AERO_DRAG_COEFF * self.speed_mps * self.speed_mps;
+        let rolling = if self.speed_mps > 0.01 {
+            ROLLING_RESIST_MPS2
+        } else {
+            0.0
+        };
+
+        let net_accel = accel - decel - drag - rolling;
+        self.speed_mps = (self.speed_mps + net_accel * dt).clamp(0.0, max_speed_mps);
+
+        let steer_rad = self.steer_angle_deg.to_radians();
+        let turn_rate = if WHEELBASE_METERS > 0.0 {
+            (self.speed_mps / WHEELBASE_METERS) * steer_rad.tan()
+        } else {
+            0.0
+        };
+
+        let ds_dt = self.speed_mps;
+        let dt_dt = self.speed_mps * turn_rate * dt;
+
+        self.position_s += ds_dt * dt;
+        self.lateral_t += dt_dt;
+
+        self.position_s = self.position_s.clamp(0.0, road.total_length);
+
+        if let Some(point) = road.sample_at_s(self.position_s) {
+            self.road_heading = point.heading;
+            self.curvature = point.curvature;
+
+            let normal_x = -point.heading.sin();
+            let normal_z = point.heading.cos();
+            self.position_x = point.x + self.lateral_t * normal_x;
+            self.position_z = point.z + self.lateral_t * normal_z;
+
+            self.heading_rad = point.heading + turn_rate * dt;
+        }
+
+        self.lateral_offset = self.lateral_t - road.lane_offset(self.lane_index);
+        self.lane_index = road.closest_lane(self.lateral_t);
     }
 
     pub fn bounding_box(&self) -> (f64, f64, f64, f64) {
