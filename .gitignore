@@ -1,36 +1,74 @@
-# Node / frontend artifacts
+# ==========================
+# Build artifacts
+# ==========================
+
+# Rust
+apps/backend/target/
+
+# Node / frontend
 node_modules/
 dist/
 apps/frontend/dist/
+apps/frontend/tsconfig.tsbuildinfo
 
-# Backend builds
-apps/backend/dist/
-
-# Logs and caches
-*.log
-.DS_Store
-*.tmp
+# Python
 __pycache__/
+*.egg-info/
 apps/training/.mypy_cache/
 apps/training/.ruff_cache/
 
+# ==========================
+# AI / Claude generated
+# ==========================
+.claude/
+
+# ==========================
+# Environment secrets
+# ==========================
+.env
+.env.*
+*.env
+
+# ==========================
 # Python virtual environments & training outputs
+# ==========================
 .venv/
 apps/training/.venv/
 apps/training/runs/
 apps/training/output/
 
+# ==========================
 # Generated datasets / episodes
+# ==========================
 data/voice_intents*.jsonl
 
-# Environment secrets
-.env
-.env.local
-*.env
-apps/backend/.env.example
-
+# ==========================
 # Checkpoints / models
+# ==========================
 *.onnx
 *.pt
 *.pth
 runs/
+
+# ==========================
+# OS files
+# ==========================
+.DS_Store
+Thumbs.db
+
+# ==========================
+# IDE files
+# ==========================
+.vscode/
+.idea/
+
+# ==========================
+# Logs
+# ==========================
+*.log
+npm-debug.log*
+
+# ==========================
+# Misc
+# ==========================
+*.tmp
