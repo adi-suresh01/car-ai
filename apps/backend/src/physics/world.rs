@@ -1,6 +1,6 @@
 use crate::config::*;
 use crate::mission::state::MissionState;
-use crate::physics::collision::check_player_collisions;
+use crate::physics::spatial::check_player_collisions_spatial;
 use crate::physics::vehicle::{Vehicle, VehicleType};
 
 pub struct World {
@@ -36,7 +36,7 @@ impl World {
             npc.step(dt);
         }
 
-        self.collision = check_player_collisions(&self.player, &self.npcs);
+        self.collision = check_player_collisions_spatial(&self.player, &self.npcs);
 
         self.tick += 1;
         self.time_s += dt;

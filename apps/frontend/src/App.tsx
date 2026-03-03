@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { useSimulationStore } from "./state/simulationStore";
 import {
   startSimulationLoop,
@@ -14,10 +14,12 @@ import { GearIndicator } from "./components/HUD/GearIndicator";
 import { MissionStatus } from "./components/HUD/MissionStatus";
 import { VoiceIndicator } from "./components/HUD/VoiceIndicator";
 import { AutopilotIndicator } from "./components/HUD/AutopilotIndicator";
+import { HelpOverlay } from "./components/HUD/HelpOverlay";
 import { CarPlayDisplay } from "./components/Dashboard/CarPlayDisplay";
 import { DashboardConsole } from "./components/Dashboard/DashboardConsole";
 import { VoiceDebugPanel } from "./components/Voice/VoiceDebugPanel";
 import { VoiceListener } from "./components/Voice/VoiceListener";
+import { ScenarioSelector } from "./components/Settings/ScenarioSelector";
 
 function CollisionOverlay() {
   const collision = useSimulationStore((s) => s.collision);
@@ -68,6 +70,29 @@ function ViewToggle() {
   );
 }
 
+function HelpHint() {
+  return (
+    <div className="help-hint">
+      <kbd className="help-hint-key">H</kbd>
+      <span>Help</span>
+    </div>
+  );
+}
+
+function ViewTransition() {
+  const progress = useSimulationStore((s) => s.viewTransitionProgress);
+
+  if (progress >= 1) return null;
+
+  const opacity = 1 - progress;
+  return (
+    <div
+      className="view-transition-overlay"
+      style={{ opacity }}
+    />
+  );
+}
+
 function toggleAutopilot(): void {
   const store = useSimulationStore.getState();
   if (!store.autopilotReady) return;
@@ -82,10 +107,35 @@ function toggleAutopilot(): void {
   }
 }
 
+function switchView(): void {
+  const store = useSimulationStore.getState();
+  const next = store.viewMode === "driver" ? "topdown" : "driver";
+
+  store.setViewTransitionProgress(0);
+  store.setViewMode(next);
+
+  let start: number | null = null;
+  const duration = 300;
+
+  function animate(ts: number) {
+    if (start === null) start = ts;
+    const elapsed = ts - start;
+    const progress = Math.min(1, elapsed / duration);
+    const eased = 1 - Math.pow(1 - progress, 3);
+    useSimulationStore.getState().setViewTransitionProgress(eased);
+
+    if (progress < 1) {
+      requestAnimationFrame(animate);
+    }
+  }
+  requestAnimationFrame(animate);
+}
+
 export function App() {
   const viewMode = useSimulationStore((s) => s.viewMode);
   const showDebugPanel = useSimulationStore((s) => s.showDebugPanel);
   const toggleDebugPanel = useSimulationStore((s) => s.toggleDebugPanel);
+  const toggleHelpOverlay = useSimulationStore((s) => s.toggleHelpOverlay);
 
   useEffect(() => {
     const setLayout = useSimulationStore.getState().setLayout;
@@ -109,19 +159,28 @@ export function App() {
 
   const handleKeyboardShortcuts = useCallback(
     (e: KeyboardEvent) => {
+      const store = useSimulationStore.getState();
+
+      if (store.showScenarioSelector || store.showHelpOverlay) return;
+
       if (e.key === "`" || e.key === "~") {
         toggleDebugPanel();
       }
-      if (e.key === "Tab") {
-        e.preventDefault();
-        const store = useSimulationStore.getState();
-        store.setViewMode(store.viewMode === "driver" ? "topdown" : "driver");
+      if (e.key === "Tab" || e.key === "v" || e.key === "V") {
+        if (e.key === "Tab") e.preventDefault();
+        switchView();
       }
       if (e.key === "p" || e.key === "P") {
         toggleAutopilot();
       }
+      if (e.key === "h" || e.key === "H") {
+        toggleHelpOverlay();
+      }
+      if (e.key === "n" || e.key === "N") {
+        store.setShowScenarioSelector(true);
+      }
     },
-    [toggleDebugPanel]
+    [toggleDebugPanel, toggleHelpOverlay]
   );
 
   useEffect(() => {
@@ -135,11 +194,13 @@ export function App() {
         {viewMode === "driver" ? <DriverView /> : <TopDownView />}
       </div>
 
+      <ViewTransition />
       <CollisionOverlay />
 
       <div className="hud-layer">
         <ConnectionStatus />
         <ViewToggle />
+        <HelpHint />
 
         <div className="hud-bottom-left">
           <Speedometer />
@@ -159,6 +220,8 @@ export function App() {
         </div>
       </div>
 
+      <HelpOverlay />
+      <ScenarioSelector />
       <VoiceListener />
     </div>
   );

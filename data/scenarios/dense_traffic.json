@@ -1,0 +1,42 @@
+{
+  "name": "dense_traffic",
+  "description": "High-density traffic scenario with aggressive drivers for stress testing",
+  "road": {
+    "num_lanes": 5,
+    "lane_width_meters": 3.6,
+    "lane_speed_limits_mph": [75, 70, 65, 60, 55]
+  },
+  "player": {
+    "initial_lane": 2,
+    "initial_speed_mps": 29.0,
+    "cruise_target_mph": 65.0
+  },
+  "traffic": {
+    "target_npc_count": 20,
+    "spawn_distance": -250.0,
+    "despawn_distance": 1000.0,
+    "policy_distribution": {
+      "defensive": 0.1,
+      "aggressive": 0.5,
+      "cruiser": 0.1,
+      "random": 0.3
+    },
+    "initial_spacing_meters": 50.0,
+    "initial_z_offset": -150.0
+  },
+  "episode": {
+    "max_steps": 3600,
+    "collision_terminates": true
+  },
+  "environment": {
+    "time_of_day": "day",
+    "weather": "overcast",
+    "visibility": 0.8
+  },
+  "mission": {
+    "target_distance_m": 5000.0,
+    "target_avg_speed_mph": 60.0,
+    "max_collisions": 0,
+    "required_lane_changes": null
+  }
+}

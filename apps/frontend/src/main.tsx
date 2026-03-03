@@ -4,6 +4,7 @@ import { App } from "./App";
 import "./styles/index.css";
 import "./styles/hud.css";
 import "./styles/dashboard.css";
+import "./styles/overlays.css";
 
 const rootElement = document.getElementById("root");
 if (!rootElement) {

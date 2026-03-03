@@ -1,4 +1,4 @@
-import type { SimulationLayout, MissionState } from "../models/types";
+import type { SimulationLayout, MissionState, ScenarioDefinition } from "../models/types";
 
 const API_BASE = import.meta.env.VITE_API_URL || "";
 
@@ -43,6 +43,19 @@ export async function sendVoiceCommand(
   return request("/api/voice/command", {
     method: "POST",
     body: JSON.stringify({ utterance }),
+  });
+}
+
+export async function fetchScenarios(): Promise<ScenarioDefinition[]> {
+  return request("/api/scenarios");
+}
+
+export async function loadScenario(
+  scenarioName: string
+): Promise<{ ok: boolean }> {
+  return request("/api/scenarios/load", {
+    method: "POST",
+    body: JSON.stringify({ name: scenarioName }),
   });
 }
 

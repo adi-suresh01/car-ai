@@ -43,6 +43,8 @@ pub struct VehicleSnapshot {
     pub speed_mps: f64,
     pub position: [f64; 3],
     pub heading: [f64; 3],
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub behavior: Option<String>,
 }
 
 impl From<&Vehicle> for VehicleSnapshot {
@@ -55,6 +57,7 @@ impl From<&Vehicle> for VehicleSnapshot {
             speed_mps: v.speed_mps,
             position: [v.position_x, 0.0, v.position_z],
             heading: [v.heading_rad.sin(), 0.0, v.heading_rad.cos()],
+            behavior: v.behavior.clone(),
         }
     }
 }

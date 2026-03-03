@@ -9,6 +9,8 @@ import { PlayerCar } from "./PlayerCar";
 import { TrafficVehicles } from "./TrafficVehicle";
 import { Scenery } from "./Scenery";
 import { PostProcessing } from "./PostProcessing";
+import { SpeedLines } from "./SpeedLines";
+import { RearViewMirror } from "./RearViewMirror";
 
 const BASE_FOV = 60;
 const MAX_FOV_BOOST = 6;
@@ -21,9 +23,10 @@ const SWAY_FREQUENCY = 1.3;
 const ROLL_FACTOR = 0.015;
 
 function CameraController() {
-  const cameraRef = useRef<THREE.PerspectiveCamera>(null);
   const { camera } = useThree();
   const timeRef = useRef(0);
+  const posRef = useRef(new THREE.Vector3());
+  const targetRef = useRef(new THREE.Vector3());
 
   useEffect(() => {
     if (camera instanceof THREE.PerspectiveCamera) {
@@ -51,17 +54,19 @@ function CameraController() {
     const sway =
       Math.sin(t * SWAY_FREQUENCY * Math.PI * 2) * SWAY_AMPLITUDE * speedRatio;
 
-    camera.position.set(posX + sway, posY + bob, posZ);
+    posRef.current.set(posX + sway, posY + bob, posZ);
+    camera.position.lerp(posRef.current, 0.15);
 
     const lookAheadDist = 30 + speedRatio * 40;
     const steerOffsetX =
       Math.sin(player.headingRad) * lookAheadDist * 0.3;
 
-    camera.lookAt(
+    targetRef.current.set(
       posX + steerOffsetX,
       DRIVER_EYE_HEIGHT - 0.15,
       lookAheadDist
     );
+    camera.lookAt(targetRef.current);
 
     const steerRoll =
       (-player.steerAngleDeg / PHYSICS.MAX_STEER_DEG) * ROLL_FACTOR;
@@ -86,6 +91,8 @@ function DriverScene() {
       <PlayerCar />
       <TrafficVehicles />
       <Scenery />
+      <SpeedLines />
+      <RearViewMirror />
       <PostProcessing />
     </>
   );
@@ -100,6 +107,7 @@ export function DriverView() {
         toneMapping: THREE.ACESFilmicToneMapping,
         toneMappingExposure: 1.0,
         outputColorSpace: THREE.SRGBColorSpace,
+        powerPreference: "high-performance",
       }}
       camera={{
         fov: BASE_FOV,
@@ -108,6 +116,8 @@ export function DriverView() {
         position: [7.2, DRIVER_EYE_HEIGHT, 0],
       }}
       style={{ width: "100%", height: "100%" }}
+      frameloop="always"
+      performance={{ min: 0.5 }}
     >
       <DriverScene />
     </Canvas>

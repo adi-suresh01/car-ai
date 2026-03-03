@@ -24,6 +24,8 @@ export interface PlayerState {
   gear: number;
 }
 
+export type NPCBehavior = "aggressive" | "defensive" | "cruiser";
+
 export interface VehicleState {
   id: string;
   type: VehicleType;
@@ -32,6 +34,7 @@ export interface VehicleState {
   speedMps: number;
   position: [number, number, number];
   heading: [number, number, number];
+  behavior?: NPCBehavior;
 }
 
 export interface SimulationLayout {
@@ -104,6 +107,26 @@ export interface VoiceCommandEntry {
   timestamp: number;
   success: boolean;
 }
+
+export interface ScenarioEnvironment {
+  timeOfDay: string;
+  weather: string;
+  visibility: number;
+}
+
+export interface ScenarioDefinition {
+  name: string;
+  description: string;
+  npcCount: number;
+  numLanes: number;
+  environment: ScenarioEnvironment;
+}
+
+export const NPC_BEHAVIOR_COLORS: Record<NPCBehavior, { body: number; emissive: number; label: string }> = {
+  aggressive: { body: 0xff3333, emissive: 0xff1111, label: "AGG" },
+  defensive: { body: 0x3388ff, emissive: 0x2266cc, label: "DEF" },
+  cruiser: { body: 0xcccccc, emissive: 0x888888, label: "CRU" },
+};
 
 export const PHYSICS = {
   LANE_WIDTH_METERS: 3.6,

@@ -4,6 +4,8 @@ use std::sync::Mutex;
 use crate::api::types::*;
 use crate::mission::state::MissionSource;
 use crate::physics::world::World;
+use crate::rl::recorder::EpisodeRecorder;
+use crate::scenario::loader::ScenarioLoader;
 use crate::traffic::manager::TrafficManager;
 
 pub async fn get_health() -> HttpResponse {
@@ -82,4 +84,66 @@ pub async fn post_player_input(
 
     let snapshot = PlayerSnapshot::from(&world.player);
     HttpResponse::Ok().json(snapshot)
+}
+
+pub async fn get_scenarios(
+    scenario_loader: web::Data<Mutex<ScenarioLoader>>,
+) -> HttpResponse {
+    let loader = scenario_loader.lock().unwrap();
+    let scenarios = loader.list_scenarios();
+    HttpResponse::Ok().json(scenarios)
+}
+
+#[derive(serde::Deserialize)]
+pub struct LoadScenarioRequest {
+    pub name: String,
+}
+
+pub async fn post_load_scenario(
+    body: web::Json<LoadScenarioRequest>,
+    world: web::Data<Mutex<World>>,
+    traffic: web::Data<Mutex<TrafficManager>>,
+    scenario_loader: web::Data<Mutex<ScenarioLoader>>,
+) -> HttpResponse {
+    let mut world = world.lock().unwrap();
+    let mut traffic = traffic.lock().unwrap();
+    let mut loader = scenario_loader.lock().unwrap();
+
+    match loader.apply_scenario(&body.name, &mut world, &mut traffic) {
+        Ok(summary) => HttpResponse::Ok().json(summary),
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({ "error": e })),
+    }
+}
+
+pub async fn post_record_start(
+    recorder: web::Data<Mutex<EpisodeRecorder>>,
+) -> HttpResponse {
+    let mut recorder = recorder.lock().unwrap();
+    let recordings_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("../../data/recordings");
+    match recorder.start(recordings_dir.to_str().unwrap_or("data/recordings")) {
+        Ok(filename) => HttpResponse::Ok().json(serde_json::json!({
+            "status": "recording_started",
+            "filename": filename,
+        })),
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({ "error": e })),
+    }
+}
+
+pub async fn post_record_stop(
+    recorder: web::Data<Mutex<EpisodeRecorder>>,
+) -> HttpResponse {
+    let mut recorder = recorder.lock().unwrap();
+    match recorder.stop() {
+        Ok(summary) => HttpResponse::Ok().json(summary),
+        Err(e) => HttpResponse::BadRequest().json(serde_json::json!({ "error": e })),
+    }
+}
+
+pub async fn get_record_status(
+    recorder: web::Data<Mutex<EpisodeRecorder>>,
+) -> HttpResponse {
+    let recorder = recorder.lock().unwrap();
+    let status = crate::rl::recorder::RecordingStatus::from(&*recorder);
+    HttpResponse::Ok().json(status)
 }

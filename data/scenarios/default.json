@@ -15,10 +15,11 @@
     "target_npc_count": 12,
     "spawn_distance": -320.0,
     "despawn_distance": 1200.0,
-    "behavior_distribution": {
-      "steady": 0.34,
-      "assertive": 0.33,
-      "cautious": 0.33
+    "policy_distribution": {
+      "defensive": 0.25,
+      "aggressive": 0.25,
+      "cruiser": 0.25,
+      "random": 0.25
     },
     "initial_spacing_meters": 80.0,
     "initial_z_offset": -200.0
@@ -26,5 +27,16 @@
   "episode": {
     "max_steps": 3600,
     "collision_terminates": true
+  },
+  "environment": {
+    "time_of_day": "day",
+    "weather": "clear",
+    "visibility": 1.0
+  },
+  "mission": {
+    "target_distance_m": null,
+    "target_avg_speed_mph": null,
+    "max_collisions": null,
+    "required_lane_changes": null
   }
 }

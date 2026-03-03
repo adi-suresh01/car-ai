@@ -47,6 +47,7 @@ pub struct Vehicle {
     pub position_z: f64,
     pub throttle: f64,
     pub brake: f64,
+    pub behavior: Option<String>,
 }
 
 impl Vehicle {
@@ -63,6 +64,7 @@ impl Vehicle {
             position_z: 0.0,
             throttle: 0.0,
             brake: 0.0,
+            behavior: None,
         }
     }
 
@@ -220,7 +222,7 @@ mod tests {
         for speed_mph in [0.0, 10.0, 20.0, 40.0, 65.0, 100.0] {
             v.speed_mps = speed_mph * MPH_TO_MPS;
             let g = v.gear();
-            assert!(g >= 1 && g <= 6, "gear {g} out of range for speed {speed_mph} mph");
+            assert!((1..=6).contains(&g), "gear {g} out of range for speed {speed_mph} mph");
         }
     }
 }

@@ -63,3 +63,51 @@ html, body, #root {
   from { opacity: 1; }
   to { opacity: 0; }
 }
+
+.view-transition-overlay {
+  position: absolute;
+  inset: 0;
+  background: #000;
+  z-index: 4;
+  pointer-events: none;
+  will-change: opacity;
+}
+
+.help-hint {
+  position: absolute;
+  bottom: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  border-radius: 16px;
+  padding: 4px 12px;
+  backdrop-filter: blur(16px);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.35);
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.help-hint:hover {
+  opacity: 1;
+}
+
+.help-hint-key {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.6);
+}

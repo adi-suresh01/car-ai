@@ -1,4 +1,5 @@
-import { useMemo } from "react";
+import { useRef, useMemo } from "react";
+import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import { useSimulationStore } from "../state/simulationStore";
 import { PHYSICS } from "../models/types";
@@ -101,13 +102,18 @@ function DoorPanels() {
 }
 
 export function PlayerCar() {
-  const laneIndex = useSimulationStore((s) => s.player.laneIndex);
-  const lateralOffset = useSimulationStore((s) => s.player.lateralOffset);
+  const groupRef = useRef<THREE.Group>(null);
 
-  const posX = laneIndex * PHYSICS.LANE_WIDTH_METERS + lateralOffset;
+  useFrame(() => {
+    const player = useSimulationStore.getState().player;
+    const posX = player.laneIndex * PHYSICS.LANE_WIDTH_METERS + player.lateralOffset;
+    if (groupRef.current) {
+      groupRef.current.position.x = posX;
+    }
+  });
 
   return (
-    <group position={[posX, 0, 0]}>
+    <group ref={groupRef}>
       <CockpitInterior />
       <DoorPanels />
     </group>

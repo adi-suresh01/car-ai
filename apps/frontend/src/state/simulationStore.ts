@@ -5,6 +5,7 @@ import type {
   MissionState,
   SimulationLayout,
   VoiceCommandEntry,
+  ScenarioDefinition,
 } from "../models/types";
 
 interface InterpolatedVehicle extends VehicleState {
@@ -34,6 +35,14 @@ interface SimulationStore {
   autopilotReady: boolean;
   autopilotLatencyMs: number;
 
+  showHelpOverlay: boolean;
+  showScenarioSelector: boolean;
+  scenarios: ScenarioDefinition[];
+  activeScenarioId: string | null;
+  scenariosLoading: boolean;
+
+  viewTransitionProgress: number;
+
   setConnected: (connected: boolean) => void;
   updateFromServer: (
     timestamp: number,
@@ -52,6 +61,13 @@ interface SimulationStore {
   setAutopilotEnabled: (enabled: boolean) => void;
   setAutopilotReady: (ready: boolean) => void;
   setAutopilotLatencyMs: (ms: number) => void;
+
+  toggleHelpOverlay: () => void;
+  setShowScenarioSelector: (show: boolean) => void;
+  setScenarios: (scenarios: ScenarioDefinition[]) => void;
+  setActiveScenarioId: (id: string | null) => void;
+  setScenariosLoading: (loading: boolean) => void;
+  setViewTransitionProgress: (progress: number) => void;
 }
 
 const DEFAULT_PLAYER: PlayerState = {
@@ -97,6 +113,14 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   autopilotReady: false,
   autopilotLatencyMs: 0,
 
+  showHelpOverlay: false,
+  showScenarioSelector: false,
+  scenarios: [],
+  activeScenarioId: null,
+  scenariosLoading: false,
+
+  viewTransitionProgress: 1,
+
   setConnected: (connected) => set({ connected }),
 
   updateFromServer: (timestamp, player, vehicles, mission, collision) => {
@@ -141,15 +165,24 @@ export const useSimulationStore = create<SimulationStore>((set, get) => ({
   setAutopilotReady: (ready) => set({ autopilotReady: ready }),
   setAutopilotLatencyMs: (ms) => set({ autopilotLatencyMs: ms }),
 
+  toggleHelpOverlay: () =>
+    set((state) => ({ showHelpOverlay: !state.showHelpOverlay })),
+  setShowScenarioSelector: (show) => set({ showScenarioSelector: show }),
+  setScenarios: (scenarios) => set({ scenarios }),
+  setActiveScenarioId: (id) => set({ activeScenarioId: id }),
+  setScenariosLoading: (loading) => set({ scenariosLoading: loading }),
+  setViewTransitionProgress: (progress) => set({ viewTransitionProgress: progress }),
+
   interpolateVehicles: (alpha) => {
+    const smoothAlpha = 1 - Math.pow(1 - Math.min(1, alpha), 3);
     set((state) => ({
       vehicles: state.vehicles.map((v) => ({
         ...v,
         interpolationT: Math.min(1, alpha),
         position: [
-          v.prevPosition[0] + (v.targetPosition[0] - v.prevPosition[0]) * alpha,
-          v.prevPosition[1] + (v.targetPosition[1] - v.prevPosition[1]) * alpha,
-          v.prevPosition[2] + (v.targetPosition[2] - v.prevPosition[2]) * alpha,
+          v.prevPosition[0] + (v.targetPosition[0] - v.prevPosition[0]) * smoothAlpha,
+          v.prevPosition[1] + (v.targetPosition[1] - v.prevPosition[1]) * smoothAlpha,
+          v.prevPosition[2] + (v.targetPosition[2] - v.prevPosition[2]) * smoothAlpha,
         ] as [number, number, number],
       })),
     }));

@@ -1,7 +1,7 @@
-import { useSimulationStore } from "../../state/simulationStore";
+import { useThrottledSelector } from "../../hooks/useThrottledStore";
 
 export function Speedometer() {
-  const speedMph = useSimulationStore((s) => s.player.speedMph);
+  const speedMph = useThrottledSelector((s) => s.player.speedMph, 100);
   const displaySpeed = Math.round(speedMph);
 
   return (

@@ -1,0 +1,42 @@
+{
+  "name": "night_cruise",
+  "description": "Night driving with cautious traffic and reduced visibility",
+  "road": {
+    "num_lanes": 5,
+    "lane_width_meters": 3.6,
+    "lane_speed_limits_mph": [65, 60, 55, 50, 45]
+  },
+  "player": {
+    "initial_lane": 3,
+    "initial_speed_mps": 24.0,
+    "cruise_target_mph": 55.0
+  },
+  "traffic": {
+    "target_npc_count": 8,
+    "spawn_distance": -320.0,
+    "despawn_distance": 1200.0,
+    "policy_distribution": {
+      "defensive": 0.5,
+      "aggressive": 0.05,
+      "cruiser": 0.4,
+      "random": 0.05
+    },
+    "initial_spacing_meters": 100.0,
+    "initial_z_offset": -200.0
+  },
+  "episode": {
+    "max_steps": 5400,
+    "collision_terminates": true
+  },
+  "environment": {
+    "time_of_day": "night",
+    "weather": "clear",
+    "visibility": 0.5
+  },
+  "mission": {
+    "target_distance_m": null,
+    "target_avg_speed_mph": 50.0,
+    "max_collisions": 0,
+    "required_lane_changes": null
+  }
+}

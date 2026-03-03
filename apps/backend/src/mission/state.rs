@@ -148,8 +148,10 @@ mod tests {
 
     #[test]
     fn set_lane_change_left_decrements_lane() {
-        let mut state = MissionState::default();
-        state.target_lane_index = 2;
+        let mut state = MissionState {
+            target_lane_index: 2,
+            ..MissionState::default()
+        };
         state.set_lane_change(LaneChangeDirection::Left, 2, MissionSource::Voice);
         assert_eq!(state.mode, MissionMode::LaneChange);
         assert_eq!(state.target_lane_index, 1);

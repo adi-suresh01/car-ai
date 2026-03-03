@@ -3,8 +3,8 @@ import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import type { InterpolatedVehicle } from "../state/simulationStore";
 import { useSimulationStore } from "../state/simulationStore";
-import type { VehicleType } from "../models/types";
-import { PHYSICS } from "../models/types";
+import type { VehicleType, NPCBehavior } from "../models/types";
+import { PHYSICS, NPC_BEHAVIOR_COLORS } from "../models/types";
 
 interface VehicleProfile {
   bodyLength: number;
@@ -82,6 +82,10 @@ const VEHICLE_PROFILES: Record<VehicleType, VehicleProfile> = {
   },
 };
 
+const LOD_NEAR = 100;
+const LOD_FAR = 350;
+const CULL_DISTANCE = 600;
+
 function createBodyShape(profile: VehicleProfile): THREE.Shape {
   const hw = profile.bodyWidth / 2;
   const hl = profile.bodyLength / 2;
@@ -119,7 +123,26 @@ function createCabinShape(profile: VehicleProfile): THREE.Shape {
   return shape;
 }
 
-function ProceduralCar({ profile }: { profile: VehicleProfile }) {
+function getBehaviorTint(behavior: NPCBehavior | undefined): THREE.Color {
+  if (!behavior) return new THREE.Color(1, 1, 1);
+  const cfg = NPC_BEHAVIOR_COLORS[behavior];
+  return new THREE.Color(cfg.body);
+}
+
+function getBehaviorEmissive(behavior: NPCBehavior | undefined): number {
+  if (!behavior) return 0;
+  return NPC_BEHAVIOR_COLORS[behavior].emissive;
+}
+
+function ProceduralCarFull({ profile, behavior }: { profile: VehicleProfile; behavior?: NPCBehavior }) {
+  const behaviorTint = useMemo(() => getBehaviorTint(behavior), [behavior]);
+  const behaviorEmissive = useMemo(() => getBehaviorEmissive(behavior), [behavior]);
+
+  const bodyColor = useMemo(() => {
+    if (!behavior) return profile.color;
+    return profile.color.clone().lerp(behaviorTint, 0.35);
+  }, [profile, behavior, behaviorTint]);
+
   const bodyGeometry = useMemo(() => {
     const shape = createBodyShape(profile);
     const extrudeSettings: THREE.ExtrudeGeometryOptions = {
@@ -199,7 +222,9 @@ function ProceduralCar({ profile }: { profile: VehicleProfile }) {
     <group>
       <mesh geometry={bodyGeometry} castShadow receiveShadow>
         <meshStandardMaterial
-          color={profile.color}
+          color={bodyColor}
+          emissive={behaviorEmissive}
+          emissiveIntensity={behavior ? 0.15 : 0}
           metalness={0.7}
           roughness={0.25}
           envMapIntensity={1.2}
@@ -263,44 +288,134 @@ function ProceduralCar({ profile }: { profile: VehicleProfile }) {
   );
 }
 
-interface TrafficVehicleProps {
-  vehicle: InterpolatedVehicle;
-  playerZ: number;
-}
+function ProceduralCarSimple({ profile, behavior }: { profile: VehicleProfile; behavior?: NPCBehavior }) {
+  const behaviorTint = useMemo(() => getBehaviorTint(behavior), [behavior]);
+  const behaviorEmissive = useMemo(() => getBehaviorEmissive(behavior), [behavior]);
 
-export function TrafficVehicle({ vehicle, playerZ }: TrafficVehicleProps) {
-  const groupRef = useRef<THREE.Group>(null);
-  const profile = VEHICLE_PROFILES[vehicle.type] || VEHICLE_PROFILES.sedan;
-
-  const relativeZ = vehicle.position[2] - playerZ;
-  const laneX = vehicle.laneIndex * PHYSICS.LANE_WIDTH_METERS;
-
-  useFrame(() => {
-    if (groupRef.current) {
-      groupRef.current.position.set(laneX, 0, relativeZ);
-      const headingAngle = Math.atan2(vehicle.heading[0], vehicle.heading[2]);
-      groupRef.current.rotation.y = headingAngle;
-    }
-  });
-
-  if (Math.abs(relativeZ) > 600) return null;
+  const bodyColor = useMemo(() => {
+    if (!behavior) return profile.color;
+    return profile.color.clone().lerp(behaviorTint, 0.35);
+  }, [profile, behavior, behaviorTint]);
 
   return (
-    <group ref={groupRef}>
-      <ProceduralCar profile={profile} />
+    <group>
+      <mesh castShadow>
+        <boxGeometry args={[profile.bodyLength, profile.bodyHeight + profile.cabinHeight, profile.bodyWidth]} />
+        <meshStandardMaterial
+          color={bodyColor}
+          emissive={behaviorEmissive}
+          emissiveIntensity={behavior ? 0.15 : 0}
+          metalness={0.5}
+          roughness={0.4}
+        />
+      </mesh>
     </group>
   );
 }
 
+function BehaviorIndicator({ behavior, height }: { behavior: NPCBehavior; height: number }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const cfg = NPC_BEHAVIOR_COLORS[behavior];
+
+  useFrame((_, delta) => {
+    if (meshRef.current) {
+      meshRef.current.rotation.y += delta * 1.5;
+    }
+  });
+
+  return (
+    <group position={[0, height + 1.2, 0]}>
+      <mesh ref={meshRef}>
+        <octahedronGeometry args={[0.25, 0]} />
+        <meshStandardMaterial
+          color={cfg.body}
+          emissive={cfg.emissive}
+          emissiveIntensity={0.8}
+          transparent
+          opacity={0.85}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+interface TrafficVehicleProps {
+  vehicle: InterpolatedVehicle;
+  playerZ: number;
+  isTopDown: boolean;
+}
+
+function TrafficVehicleSingle({ vehicle, playerZ, isTopDown }: TrafficVehicleProps) {
+  const groupRef = useRef<THREE.Group>(null);
+  const profile = VEHICLE_PROFILES[vehicle.type] || VEHICLE_PROFILES.sedan;
+  const posRef = useRef({ laneX: 0, relZ: 0, headingAngle: 0 });
+
+  useFrame(() => {
+    const relativeZ = vehicle.position[2] - playerZ;
+    const laneX = vehicle.laneIndex * PHYSICS.LANE_WIDTH_METERS;
+    posRef.current.laneX = laneX;
+    posRef.current.relZ = relativeZ;
+    posRef.current.headingAngle = Math.atan2(vehicle.heading[0], vehicle.heading[2]);
+
+    if (groupRef.current) {
+      groupRef.current.position.set(laneX, 0, relativeZ);
+      groupRef.current.rotation.y = posRef.current.headingAngle;
+    }
+  });
+
+  const relativeZ = vehicle.position[2] - playerZ;
+  const dist = Math.abs(relativeZ);
+
+  if (dist > CULL_DISTANCE) return null;
+
+  const useLOD = dist > LOD_FAR;
+  const vehicleHeight = profile.wheelRadius + profile.bodyHeight + profile.cabinHeight;
+
+  return (
+    <group ref={groupRef}>
+      {useLOD ? (
+        <ProceduralCarSimple profile={profile} behavior={vehicle.behavior} />
+      ) : (
+        <ProceduralCarFull profile={profile} behavior={vehicle.behavior} />
+      )}
+      {isTopDown && vehicle.behavior && (
+        <BehaviorIndicator behavior={vehicle.behavior} height={vehicleHeight} />
+      )}
+    </group>
+  );
+}
+
+export function TrafficVehicle({ vehicle, playerZ }: { vehicle: InterpolatedVehicle; playerZ: number }) {
+  return <TrafficVehicleSingle vehicle={vehicle} playerZ={playerZ} isTopDown={false} />;
+}
+
 export function TrafficVehicles() {
+  const vehiclesRef = useRef<InterpolatedVehicle[]>([]);
+  const playerZRef = useRef(0);
+
+  useFrame(() => {
+    const store = useSimulationStore.getState();
+    vehiclesRef.current = store.vehicles;
+    playerZRef.current = store.player.positionZ;
+  });
+
   const vehicles = useSimulationStore((s) => s.vehicles);
   const playerZ = useSimulationStore((s) => s.player.positionZ);
+  const viewMode = useSimulationStore((s) => s.viewMode);
+  const isTopDown = viewMode === "topdown";
 
   return (
     <>
       {vehicles.map((v) => (
-        <TrafficVehicle key={v.id} vehicle={v} playerZ={playerZ} />
+        <TrafficVehicleSingle
+          key={v.id}
+          vehicle={v}
+          playerZ={playerZ}
+          isTopDown={isTopDown}
+        />
       ))}
     </>
   );
 }
+
+export { VEHICLE_PROFILES, type VehicleProfile };
