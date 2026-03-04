@@ -1,15 +1,58 @@
 .dashboard-infotainment {
   position: absolute;
-  bottom: 60px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 200px;
-  max-height: 250px;
-  overflow: hidden;
   pointer-events: auto;
   z-index: 12;
-  opacity: 0.88;
   font-size: 9px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Collapsed state: positioned on the car's infotainment screen */
+.dashboard-infotainment.collapsed {
+  bottom: 18%;
+  left: 52%;
+  width: 170px;
+  max-height: 110px;
+  overflow: hidden;
+  opacity: 0.85;
+  transform: perspective(600px) rotateX(3deg);
+  cursor: pointer;
+}
+
+.dashboard-infotainment.collapsed:hover {
+  opacity: 0.95;
+  transform: perspective(600px) rotateX(1deg) scale(1.05);
+}
+
+/* Expanded state: larger, floating for interaction */
+.dashboard-infotainment.expanded {
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 280px;
+  max-height: 400px;
+  overflow: hidden;
+  opacity: 0.95;
+}
+
+.infotainment-collapse-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 9px;
+  padding: 2px 6px;
+  cursor: pointer;
+  z-index: 1;
+  font-family: var(--font-sans);
+  transition: all 0.15s;
+}
+
+.infotainment-collapse-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: #fff;
 }
 
 .dashboard-console-panel {

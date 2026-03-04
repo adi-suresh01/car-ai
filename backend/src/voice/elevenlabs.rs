@@ -44,7 +44,7 @@ impl ElevenLabsClient {
             .unwrap_or_else(|_| DEFAULT_VOICE_ID.to_string());
 
         if api_key.as_ref().is_none_or(|k| k.is_empty()) {
-            warn!("XI_API_KEY is not set; ElevenLabs STT/TTS calls will return stubs");
+            warn!("XI_API_KEY is not set; ElevenLabs STT/TTS endpoints will return 503");
         } else {
             info!("ElevenLabs client initialized with API key");
         }
@@ -63,7 +63,7 @@ impl ElevenLabsClient {
     pub async fn transcribe(&self, audio_data: &[u8]) -> Result<String, String> {
         let api_key = match self.require_api_key() {
             Some(k) => k,
-            None => return Ok("cruise 65".to_string()),
+            None => return Err("ElevenLabs API key not configured".to_string()),
         };
 
         // The frontend sends raw 16kHz 16-bit signed LE PCM.
@@ -108,7 +108,7 @@ impl ElevenLabsClient {
     pub async fn synthesize(&self, text: &str) -> Result<Vec<u8>, String> {
         let api_key = match self.require_api_key() {
             Some(k) => k,
-            None => return Ok(Vec::new()),
+            None => return Err("ElevenLabs API key not configured".to_string()),
         };
 
         let url = format!(
@@ -147,7 +147,7 @@ impl ElevenLabsClient {
         match &self.api_key {
             Some(k) if !k.is_empty() => Some(k.clone()),
             _ => {
-                warn!("ElevenLabs API key not configured, returning stub response");
+                warn!("ElevenLabs API key not configured");
                 None
             }
         }

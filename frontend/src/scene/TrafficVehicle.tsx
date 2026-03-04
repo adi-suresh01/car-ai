@@ -1,127 +1,44 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
+import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
 import type { InterpolatedVehicle } from "../state/simulationStore";
 import { useSimulationStore } from "../state/simulationStore";
 import type { VehicleType, NPCBehavior } from "../models/types";
 import { PHYSICS, NPC_BEHAVIOR_COLORS } from "../models/types";
+import { sampleSpline, interpolateSampleAtS, type SplineSample } from "./roadSpline";
+
+// Preload all vehicle models
+const MODEL_PATHS: Record<VehicleType, string> = {
+  sedan: "/models/sedan.glb",
+  suv: "/models/suv.glb",
+  truck: "/models/truck.glb",
+  "sports-car": "/models/sports-car.glb",
+  motorcycle: "/models/sedan.glb", // fallback
+};
+
+for (const path of Object.values(MODEL_PATHS)) {
+  useGLTF.preload(path);
+}
 
 interface VehicleProfile {
   bodyLength: number;
   bodyWidth: number;
   bodyHeight: number;
   cabinHeight: number;
-  cabinSetback: number;
-  cabinLength: number;
   wheelRadius: number;
-  wheelWidth: number;
-  color: THREE.Color;
-  cabinTint: THREE.Color;
 }
 
 const VEHICLE_PROFILES: Record<VehicleType, VehicleProfile> = {
-  sedan: {
-    bodyLength: 4.6,
-    bodyWidth: 1.85,
-    bodyHeight: 0.45,
-    cabinHeight: 0.65,
-    cabinSetback: 0.6,
-    cabinLength: 2.4,
-    wheelRadius: 0.33,
-    wheelWidth: 0.22,
-    color: new THREE.Color(0.25, 0.35, 0.55),
-    cabinTint: new THREE.Color(0.12, 0.15, 0.2),
-  },
-  suv: {
-    bodyLength: 4.9,
-    bodyWidth: 2.0,
-    bodyHeight: 0.6,
-    cabinHeight: 0.8,
-    cabinSetback: 0.3,
-    cabinLength: 3.0,
-    wheelRadius: 0.4,
-    wheelWidth: 0.26,
-    color: new THREE.Color(0.5, 0.5, 0.55),
-    cabinTint: new THREE.Color(0.15, 0.15, 0.18),
-  },
-  truck: {
-    bodyLength: 5.8,
-    bodyWidth: 2.1,
-    bodyHeight: 0.7,
-    cabinHeight: 0.9,
-    cabinSetback: 0.2,
-    cabinLength: 2.2,
-    wheelRadius: 0.42,
-    wheelWidth: 0.28,
-    color: new THREE.Color(0.7, 0.65, 0.55),
-    cabinTint: new THREE.Color(0.2, 0.18, 0.15),
-  },
-  "sports-car": {
-    bodyLength: 4.4,
-    bodyWidth: 1.9,
-    bodyHeight: 0.35,
-    cabinHeight: 0.5,
-    cabinSetback: 0.8,
-    cabinLength: 1.8,
-    wheelRadius: 0.3,
-    wheelWidth: 0.24,
-    color: new THREE.Color(0.8, 0.15, 0.1),
-    cabinTint: new THREE.Color(0.1, 0.1, 0.1),
-  },
-  motorcycle: {
-    bodyLength: 2.2,
-    bodyWidth: 0.6,
-    bodyHeight: 0.5,
-    cabinHeight: 0.4,
-    cabinSetback: 0.2,
-    cabinLength: 0.8,
-    wheelRadius: 0.32,
-    wheelWidth: 0.14,
-    color: new THREE.Color(0.2, 0.2, 0.2),
-    cabinTint: new THREE.Color(0.12, 0.12, 0.12),
-  },
+  sedan: { bodyLength: 4.6, bodyWidth: 1.85, bodyHeight: 0.45, cabinHeight: 0.65, wheelRadius: 0.33 },
+  suv: { bodyLength: 4.9, bodyWidth: 2.0, bodyHeight: 0.6, cabinHeight: 0.8, wheelRadius: 0.4 },
+  truck: { bodyLength: 5.8, bodyWidth: 2.1, bodyHeight: 0.7, cabinHeight: 0.9, wheelRadius: 0.42 },
+  "sports-car": { bodyLength: 4.4, bodyWidth: 1.9, bodyHeight: 0.35, cabinHeight: 0.5, wheelRadius: 0.3 },
+  motorcycle: { bodyLength: 2.2, bodyWidth: 0.6, bodyHeight: 0.5, cabinHeight: 0.4, wheelRadius: 0.32 },
 };
 
-const LOD_NEAR = 100;
 const LOD_FAR = 350;
 const CULL_DISTANCE = 600;
-
-function createBodyShape(profile: VehicleProfile): THREE.Shape {
-  const hw = profile.bodyWidth / 2;
-  const hl = profile.bodyLength / 2;
-  const r = 0.2;
-
-  const shape = new THREE.Shape();
-  shape.moveTo(-hl + r, -hw);
-  shape.lineTo(hl - r * 2, -hw);
-  shape.quadraticCurveTo(hl, -hw, hl, -hw + r);
-  shape.lineTo(hl, hw - r);
-  shape.quadraticCurveTo(hl, hw, hl - r * 2, hw);
-  shape.lineTo(-hl + r, hw);
-  shape.quadraticCurveTo(-hl, hw, -hl, hw - r);
-  shape.lineTo(-hl, -hw + r);
-  shape.quadraticCurveTo(-hl, -hw, -hl + r, -hw);
-
-  return shape;
-}
-
-function createCabinShape(profile: VehicleProfile): THREE.Shape {
-  const hw = (profile.bodyWidth * 0.85) / 2;
-  const frontOffset = profile.cabinSetback;
-  const hl = profile.cabinLength / 2;
-  const front = hl - frontOffset * 0.5;
-  const back = -hl;
-
-  const shape = new THREE.Shape();
-  shape.moveTo(back, -hw * 0.9);
-  shape.lineTo(front * 0.7, -hw);
-  shape.quadraticCurveTo(front, -hw * 0.6, front, 0);
-  shape.quadraticCurveTo(front, hw * 0.6, front * 0.7, hw);
-  shape.lineTo(back, hw * 0.9);
-  shape.lineTo(back, -hw * 0.9);
-
-  return shape;
-}
 
 function getBehaviorTint(behavior: NPCBehavior | undefined): THREE.Color {
   if (!behavior) return new THREE.Color(1, 1, 1);
@@ -129,187 +46,43 @@ function getBehaviorTint(behavior: NPCBehavior | undefined): THREE.Color {
   return new THREE.Color(cfg.body);
 }
 
-function getBehaviorEmissive(behavior: NPCBehavior | undefined): number {
-  if (!behavior) return 0;
-  return NPC_BEHAVIOR_COLORS[behavior].emissive;
+function GLTFVehicle({ type, behavior }: { type: VehicleType; behavior?: NPCBehavior }) {
+  const { scene } = useGLTF(MODEL_PATHS[type] || MODEL_PATHS.sedan);
+  const cloned = useMemo(() => {
+    const clone = scene.clone(true);
+    if (behavior) {
+      const tint = getBehaviorTint(behavior);
+      clone.traverse((child) => {
+        if (child instanceof THREE.Mesh && child.material) {
+          const mat = (child.material as THREE.MeshStandardMaterial).clone();
+          if (mat.name.includes("Body")) {
+            mat.color.lerp(tint, 0.35);
+            mat.emissive.copy(tint);
+            mat.emissiveIntensity = 0.15;
+          }
+          child.material = mat;
+        }
+      });
+    }
+    return clone;
+  }, [scene, behavior]);
+
+  return <primitive object={cloned} />;
 }
 
-function ProceduralCarFull({ profile, behavior }: { profile: VehicleProfile; behavior?: NPCBehavior }) {
-  const behaviorTint = useMemo(() => getBehaviorTint(behavior), [behavior]);
-  const behaviorEmissive = useMemo(() => getBehaviorEmissive(behavior), [behavior]);
+function SimpleBox({ profile, behavior }: { profile: VehicleProfile; behavior?: NPCBehavior }) {
+  const color = useMemo(() => {
+    const base = new THREE.Color(0.4, 0.4, 0.45);
+    if (behavior) base.lerp(getBehaviorTint(behavior), 0.35);
+    return base;
+  }, [behavior]);
 
-  const bodyColor = useMemo(() => {
-    if (!behavior) return profile.color;
-    return profile.color.clone().lerp(behaviorTint, 0.35);
-  }, [profile, behavior, behaviorTint]);
-
-  const bodyGeometry = useMemo(() => {
-    const shape = createBodyShape(profile);
-    const extrudeSettings: THREE.ExtrudeGeometryOptions = {
-      depth: profile.bodyHeight,
-      bevelEnabled: true,
-      bevelThickness: 0.05,
-      bevelSize: 0.05,
-      bevelSegments: 3,
-    };
-    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geom.rotateX(-Math.PI / 2);
-    geom.translate(0, profile.wheelRadius + 0.1, 0);
-    return geom;
-  }, [profile]);
-
-  const cabinGeometry = useMemo(() => {
-    const shape = createCabinShape(profile);
-    const extrudeSettings: THREE.ExtrudeGeometryOptions = {
-      depth: profile.cabinHeight,
-      bevelEnabled: true,
-      bevelThickness: 0.06,
-      bevelSize: 0.08,
-      bevelSegments: 4,
-    };
-    const geom = new THREE.ExtrudeGeometry(shape, extrudeSettings);
-    geom.rotateX(-Math.PI / 2);
-    geom.translate(
-      -profile.cabinSetback * 0.3,
-      profile.wheelRadius + 0.1 + profile.bodyHeight,
-      0
-    );
-    return geom;
-  }, [profile]);
-
-  const wheelGeometry = useMemo(() => {
-    return new THREE.CylinderGeometry(
-      profile.wheelRadius,
-      profile.wheelRadius,
-      profile.wheelWidth,
-      16
-    );
-  }, [profile]);
-
-  const wheelPositions = useMemo(() => {
-    const axleSpread = profile.bodyWidth / 2 + 0.02;
-    const frontAxle = profile.bodyLength * 0.3;
-    const rearAxle = -profile.bodyLength * 0.28;
-    return [
-      [frontAxle, profile.wheelRadius, axleSpread],
-      [frontAxle, profile.wheelRadius, -axleSpread],
-      [rearAxle, profile.wheelRadius, axleSpread],
-      [rearAxle, profile.wheelRadius, -axleSpread],
-    ] as [number, number, number][];
-  }, [profile]);
-
-  const headlightPositions = useMemo(() => {
-    const front = profile.bodyLength / 2 - 0.05;
-    const spread = profile.bodyWidth * 0.35;
-    const height = profile.wheelRadius + 0.1 + profile.bodyHeight * 0.5;
-    return [
-      [front, height, spread],
-      [front, height, -spread],
-    ] as [number, number, number][];
-  }, [profile]);
-
-  const taillightPositions = useMemo(() => {
-    const rear = -profile.bodyLength / 2 + 0.05;
-    const spread = profile.bodyWidth * 0.35;
-    const height = profile.wheelRadius + 0.1 + profile.bodyHeight * 0.5;
-    return [
-      [rear, height, spread],
-      [rear, height, -spread],
-    ] as [number, number, number][];
-  }, [profile]);
-
+  const totalH = profile.wheelRadius + profile.bodyHeight + profile.cabinHeight;
   return (
-    <group>
-      <mesh geometry={bodyGeometry} castShadow receiveShadow>
-        <meshStandardMaterial
-          color={bodyColor}
-          emissive={behaviorEmissive}
-          emissiveIntensity={behavior ? 0.2 : 0}
-          metalness={0.35}
-          roughness={0.4}
-          envMapIntensity={0.8}
-        />
-      </mesh>
-
-      <mesh geometry={cabinGeometry} castShadow>
-        <meshPhysicalMaterial
-          color={profile.cabinTint}
-          metalness={0.1}
-          roughness={0.05}
-          transmission={0.4}
-          thickness={0.3}
-          envMapIntensity={0.8}
-        />
-      </mesh>
-
-      {wheelPositions.map((pos, i) => (
-        <mesh
-          key={i}
-          geometry={wheelGeometry}
-          position={pos}
-          rotation={[0, 0, Math.PI / 2]}
-          castShadow
-        >
-          <meshStandardMaterial
-            color={0x1a1a1a}
-            metalness={0.3}
-            roughness={0.8}
-          />
-        </mesh>
-      ))}
-
-      {headlightPositions.map((pos, i) => (
-        <group key={`hl-${i}`} position={pos}>
-          <mesh>
-            <sphereGeometry args={[0.08, 8, 8]} />
-            <meshStandardMaterial
-              color={0xfff8e0}
-              emissive={0xfff8e0}
-              emissiveIntensity={2.0}
-            />
-          </mesh>
-          <pointLight color={0xfff8e0} intensity={0.3} distance={15} />
-        </group>
-      ))}
-
-      {taillightPositions.map((pos, i) => (
-        <group key={`tl-${i}`} position={pos}>
-          <mesh>
-            <boxGeometry args={[0.04, 0.08, 0.16]} />
-            <meshStandardMaterial
-              color={0xff1a1a}
-              emissive={0xff1a1a}
-              emissiveIntensity={3.0}
-            />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-function ProceduralCarSimple({ profile, behavior }: { profile: VehicleProfile; behavior?: NPCBehavior }) {
-  const behaviorTint = useMemo(() => getBehaviorTint(behavior), [behavior]);
-  const behaviorEmissive = useMemo(() => getBehaviorEmissive(behavior), [behavior]);
-
-  const bodyColor = useMemo(() => {
-    if (!behavior) return profile.color;
-    return profile.color.clone().lerp(behaviorTint, 0.35);
-  }, [profile, behavior, behaviorTint]);
-
-  return (
-    <group>
-      <mesh castShadow>
-        <boxGeometry args={[profile.bodyLength, profile.bodyHeight + profile.cabinHeight, profile.bodyWidth]} />
-        <meshStandardMaterial
-          color={bodyColor}
-          emissive={behaviorEmissive}
-          emissiveIntensity={behavior ? 0.15 : 0}
-          metalness={0.5}
-          roughness={0.4}
-        />
-      </mesh>
-    </group>
+    <mesh castShadow position={[0, totalH / 2, 0]}>
+      <boxGeometry args={[profile.bodyWidth, totalH, profile.bodyLength]} />
+      <meshStandardMaterial color={color} metalness={0.5} roughness={0.4} />
+    </mesh>
   );
 }
 
@@ -343,26 +116,52 @@ interface TrafficVehicleProps {
   vehicle: InterpolatedVehicle;
   playerZ: number;
   isTopDown: boolean;
+  samples: SplineSample[];
 }
 
-function TrafficVehicleSingle({ vehicle, playerZ, isTopDown }: TrafficVehicleProps) {
+function TrafficVehicleSingle({ vehicle, playerZ, isTopDown, samples }: TrafficVehicleProps) {
   const groupRef = useRef<THREE.Group>(null);
   const profile = VEHICLE_PROFILES[vehicle.type] || VEHICLE_PROFILES.sedan;
-  const posRef = useRef({ laneX: 0, relZ: 0, headingAngle: 0 });
 
   useFrame(() => {
     const store = useSimulationStore.getState();
     const laneCount = store.routeGeometry?.laneCount ?? 4;
     const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
     const relativeZ = vehicle.position[2] - playerZ;
-    const laneX = (vehicle.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad;
-    posRef.current.laneX = laneX;
-    posRef.current.relZ = relativeZ;
-    posRef.current.headingAngle = Math.atan2(vehicle.heading[0], vehicle.heading[2]);
+    const lateralPos = (vehicle.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad;
 
-    if (groupRef.current) {
+    if (!groupRef.current) return;
+
+    // Use spline-based positioning so NPCs follow road curves
+    if (samples.length > 0) {
+      const posS = store.playerPositionS;
+      const vehicleS = posS + relativeZ;
+      const maxS = samples[samples.length - 1].s;
+      const clampedS = Math.max(0, Math.min(vehicleS, maxS));
+      const sample = interpolateSampleAtS(samples, clampedS);
+
+      // Position on the road: spline center + lateral offset along normal
+      const worldX = sample.position.x + sample.normal.x * lateralPos;
+      const worldZ = sample.position.z + sample.normal.z * lateralPos;
+
+      // Offset by player's world position to keep relative to camera
+      const playerS = posS;
+      const playerSample = interpolateSampleAtS(samples, playerS);
+      const offsetX = worldX - playerSample.position.x;
+      const offsetZ = worldZ - playerSample.position.z;
+
+      groupRef.current.position.set(offsetX, 0, offsetZ);
+
+      // Rotate to follow road tangent direction
+      const roadHeading = Math.atan2(sample.tangent.x, sample.tangent.z);
+      // GLTF model faces -Z, add PI so it faces along +tangent
+      groupRef.current.rotation.y = roadHeading + Math.PI;
+    } else {
+      // Fallback: straight-line positioning
+      const laneX = (vehicle.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad;
       groupRef.current.position.set(laneX, 0, relativeZ);
-      groupRef.current.rotation.y = posRef.current.headingAngle;
+      const headingAngle = Math.atan2(vehicle.heading[0], vehicle.heading[2]);
+      groupRef.current.rotation.y = headingAngle + Math.PI;
     }
   });
 
@@ -377,9 +176,9 @@ function TrafficVehicleSingle({ vehicle, playerZ, isTopDown }: TrafficVehiclePro
   return (
     <group ref={groupRef}>
       {useLOD ? (
-        <ProceduralCarSimple profile={profile} behavior={vehicle.behavior} />
+        <SimpleBox profile={profile} behavior={vehicle.behavior} />
       ) : (
-        <ProceduralCarFull profile={profile} behavior={vehicle.behavior} />
+        <GLTFVehicle type={vehicle.type} behavior={vehicle.behavior} />
       )}
       {isTopDown && vehicle.behavior && (
         <BehaviorIndicator behavior={vehicle.behavior} height={vehicleHeight} />
@@ -389,23 +188,21 @@ function TrafficVehicleSingle({ vehicle, playerZ, isTopDown }: TrafficVehiclePro
 }
 
 export function TrafficVehicle({ vehicle, playerZ }: { vehicle: InterpolatedVehicle; playerZ: number }) {
-  return <TrafficVehicleSingle vehicle={vehicle} playerZ={playerZ} isTopDown={false} />;
+  return <TrafficVehicleSingle vehicle={vehicle} playerZ={playerZ} isTopDown={false} samples={[]} />;
 }
 
 export function TrafficVehicles() {
-  const vehiclesRef = useRef<InterpolatedVehicle[]>([]);
-  const playerZRef = useRef(0);
-
-  useFrame(() => {
-    const store = useSimulationStore.getState();
-    vehiclesRef.current = store.vehicles;
-    playerZRef.current = store.player.positionZ;
-  });
-
   const vehicles = useSimulationStore((s) => s.vehicles);
   const playerZ = useSimulationStore((s) => s.player.positionZ);
   const viewMode = useSimulationStore((s) => s.viewMode);
+  const routeGeometry = useSimulationStore((s) => s.routeGeometry);
   const isTopDown = viewMode === "topdown";
+
+  // Build spline samples once for all vehicles
+  const samples = useMemo(() => {
+    if (!routeGeometry) return [];
+    return sampleSpline(routeGeometry);
+  }, [routeGeometry]);
 
   return (
     <>
@@ -415,6 +212,7 @@ export function TrafficVehicles() {
           vehicle={v}
           playerZ={playerZ}
           isTopDown={isTopDown}
+          samples={samples}
         />
       ))}
     </>

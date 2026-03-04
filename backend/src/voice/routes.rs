@@ -66,6 +66,10 @@ pub async fn handle_transcribe(
     body: web::Bytes,
     elevenlabs: web::Data<ElevenLabsClient>,
 ) -> HttpResponse {
+    if !elevenlabs.has_api_key() {
+        return HttpResponse::ServiceUnavailable()
+            .json(serde_json::json!({ "error": "ElevenLabs API key not configured" }));
+    }
     match elevenlabs.transcribe(&body).await {
         Ok(text) => HttpResponse::Ok().json(TranscribeResponse { text }),
         Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({ "error": e })),
@@ -76,6 +80,10 @@ pub async fn handle_synthesize(
     body: web::Json<SynthesizeRequest>,
     elevenlabs: web::Data<ElevenLabsClient>,
 ) -> HttpResponse {
+    if !elevenlabs.has_api_key() {
+        return HttpResponse::ServiceUnavailable()
+            .json(serde_json::json!({ "error": "ElevenLabs API key not configured" }));
+    }
     match elevenlabs.synthesize(&body.text).await {
         Ok(audio_bytes) => {
             let encoded = base64::engine::general_purpose::STANDARD.encode(&audio_bytes);

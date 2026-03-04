@@ -12,8 +12,8 @@ import {
 } from "./roadSpline";
 import type { InterpolatedVehicle } from "../state/simulationStore";
 
-const TOP_DOWN_HEIGHT = 80;
-const VISIBLE_RANGE = 250;
+const TOP_DOWN_HEIGHT = 60;
+const VISIBLE_RANGE = 500;
 
 function TopDownCamera() {
   const { camera } = useThree();
@@ -29,23 +29,19 @@ function TopDownCamera() {
     const posS = store.playerPositionS;
     const samples = samplesRef.current;
 
-    camera.up.set(0, 0, 1);
-
     if (samples.length > 0) {
       const sample = interpolateSampleAtS(samples, posS);
-      const lookAhead = 30;
-      const offsetX = sample.tangent.x * lookAhead;
-      const offsetZ = sample.tangent.z * lookAhead;
-      camera.position.set(
-        sample.position.x + offsetX,
-        TOP_DOWN_HEIGHT,
-        sample.position.z + offsetZ
-      );
-      camera.lookAt(
-        sample.position.x + offsetX,
-        0,
-        sample.position.z + offsetZ
-      );
+      // Small look-ahead so the player car isn't dead center
+      const lookAhead = 15;
+      const targetX = sample.position.x + sample.tangent.x * lookAhead;
+      const targetZ = sample.position.z + sample.tangent.z * lookAhead;
+
+      camera.position.set(targetX, TOP_DOWN_HEIGHT, targetZ);
+      camera.lookAt(targetX, 0, targetZ);
+
+      // Set camera.up to road tangent so road ALWAYS appears straight on screen
+      // This prevents the "crooked" markers on curves
+      camera.up.set(sample.tangent.x, 0, sample.tangent.z).normalize();
     }
   });
 
@@ -198,6 +194,8 @@ function PlayerMarker() {
 
       if (groupRef.current) {
         groupRef.current.position.set(posX, 0.5, posZ);
+        // Align to road tangent — since camera.up also follows tangent,
+        // this will always appear "straight up" on screen
         groupRef.current.rotation.y = -roadHeading;
       }
       if (glowRef.current) {
@@ -211,22 +209,22 @@ function PlayerMarker() {
   return (
     <>
       <group ref={groupRef}>
-        {/* Car body rectangle */}
+        {/* Car body — wider, flatter for clear lane visibility */}
         <mesh position={[0, 0.3, 0]}>
-          <boxGeometry args={[2.0, 0.6, 4.5]} />
+          <boxGeometry args={[2.2, 0.5, 4.8]} />
           <meshStandardMaterial
             color={0x0088ff}
             emissive={0x0066cc}
             emissiveIntensity={0.6}
           />
         </mesh>
-        {/* Direction indicator - windshield */}
-        <mesh position={[0, 0.7, 1.2]}>
-          <boxGeometry args={[1.6, 0.3, 0.8]} />
+        {/* Direction arrow — front of car */}
+        <mesh position={[0, 0.6, 1.8]}>
+          <coneGeometry args={[0.6, 1.2, 3]} />
           <meshStandardMaterial
-            color={0x00bbff}
-            emissive={0x0099ff}
-            emissiveIntensity={0.8}
+            color={0x00ddff}
+            emissive={0x00bbff}
+            emissiveIntensity={1.0}
           />
         </mesh>
       </group>
@@ -293,6 +291,7 @@ function NPCSingleMarker({ vehicle, samples }: { vehicle: InterpolatedVehicle; s
 
       if (groupRef.current) {
         groupRef.current.position.set(posX, 0.3, posZ);
+        // Align to road tangent — matches camera.up, so always appears straight
         groupRef.current.rotation.y = -roadHeading;
       }
     }
@@ -305,11 +304,20 @@ function NPCSingleMarker({ vehicle, samples }: { vehicle: InterpolatedVehicle; s
   return (
     <group ref={groupRef}>
       <mesh position={[0, 0.3, 0]}>
-        <boxGeometry args={[1.8, 0.5, 4.2]} />
+        <boxGeometry args={[2.0, 0.5, 4.4]} />
         <meshStandardMaterial
           color={color}
           emissive={color}
           emissiveIntensity={0.4}
+        />
+      </mesh>
+      {/* Small front indicator */}
+      <mesh position={[0, 0.4, 1.8]}>
+        <boxGeometry args={[1.4, 0.2, 0.3]} />
+        <meshStandardMaterial
+          color={0xffffcc}
+          emissive={0xffffaa}
+          emissiveIntensity={0.6}
         />
       </mesh>
     </group>
@@ -335,7 +343,7 @@ export function TopDownView() {
     <Canvas
       orthographic
       camera={{
-        zoom: 5,
+        zoom: 8,
         near: 0.1,
         far: 500,
         position: [0, TOP_DOWN_HEIGHT, 0],

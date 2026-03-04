@@ -118,7 +118,7 @@ export function buildRoadMesh(
     const rightZ = sample.position.z - sample.normal.z * halfWidth;
 
     positions[base * 3] = leftX;
-    positions[base * 3 + 1] = 0.05;
+    positions[base * 3 + 1] = 0.15;
     positions[base * 3 + 2] = leftZ;
 
     positions[(base + 1) * 3] = rightX;
@@ -169,7 +169,7 @@ export function buildLaneMarkings(
 ): { dashed: LaneMarkingData[]; solid: LaneMarkingData[] } {
   const dashed: LaneMarkingData[] = [];
   const solid: LaneMarkingData[] = [];
-  const markingWidth = 0.15;
+  const markingWidth = 0.25;
 
   for (let lane = 0; lane <= laneCount; lane++) {
     const offset = lane * laneWidth - (laneCount * laneWidth) / 2;
@@ -217,10 +217,10 @@ function buildMarkingStrip(
 
     const base = i * 2;
     positions[base * 3] = leftX;
-    positions[base * 3 + 1] = 0.07;
+    positions[base * 3 + 1] = 0.17;
     positions[base * 3 + 2] = leftZ;
     positions[(base + 1) * 3] = rightX;
-    positions[(base + 1) * 3 + 1] = 0.03;
+    positions[(base + 1) * 3 + 1] = 0.17;
     positions[(base + 1) * 3 + 2] = rightZ;
 
     normals[base * 3 + 1] = 1;

@@ -26,18 +26,6 @@ const KEY_BINDINGS: Record<string, () => void> = {
   ArrowDown: () => {
     state.brake = 1;
   },
-  KeyA: () => {
-    state.steering = -1;
-  },
-  KeyD: () => {
-    state.steering = 1;
-  },
-  KeyW: () => {
-    state.throttle = 1;
-  },
-  KeyS: () => {
-    state.brake = 1;
-  },
 };
 
 const KEY_RELEASE: Record<string, () => void> = {
@@ -51,18 +39,6 @@ const KEY_RELEASE: Record<string, () => void> = {
     state.throttle = 0;
   },
   ArrowDown: () => {
-    state.brake = 0;
-  },
-  KeyA: () => {
-    state.steering = 0;
-  },
-  KeyD: () => {
-    state.steering = 0;
-  },
-  KeyW: () => {
-    state.throttle = 0;
-  },
-  KeyS: () => {
     state.brake = 0;
   },
 };

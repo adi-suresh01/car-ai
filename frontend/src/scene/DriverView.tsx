@@ -11,18 +11,13 @@ import { TrafficVehicles } from "./TrafficVehicle";
 import { Scenery } from "./Scenery";
 import { PostProcessing } from "./PostProcessing";
 import { SpeedLines } from "./SpeedLines";
-import { RearViewMirror } from "./RearViewMirror";
 
 const BASE_FOV = 65;
 const MAX_FOV_BOOST = 6;
 const DRIVER_EYE_HEIGHT = 1.22;
 const CAMERA_FORWARD_OFFSET = 0.05;
-const BOB_AMPLITUDE = 0.002;
-const BOB_FREQUENCY = 2.5;
-const SWAY_AMPLITUDE = 0.0015;
-const SWAY_FREQUENCY = 1.3;
-const ROLL_FACTOR = 0.012;
-const CAMERA_HEADING_LERP = 0.08;
+const CAMERA_HEADING_LERP = 0.25;
+const CAMERA_PITCH = -0.18;
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
@@ -35,14 +30,10 @@ function lerpAngle(current: number, target: number, alpha: number): number {
 
 function CameraController() {
   const { camera } = useThree();
-  const timeRef = useRef(0);
-  const posRef = useRef(new THREE.Vector3());
-  const targetRef = useRef(new THREE.Vector3());
-  const smoothHeadingRef = useRef(0);
+  const smoothTangentRef = useRef<THREE.Vector3 | null>(null);
   const samplesRef = useRef<SplineSample[]>([]);
-  const lookAtQuatRef = useRef(new THREE.Quaternion());
-  const rollQuatRef = useRef(new THREE.Quaternion());
-  const lookAtMatrixRef = useRef(new THREE.Matrix4());
+  const lookAtMatRef = useRef(new THREE.Matrix4());
+  const pitchQuatRef = useRef(new THREE.Quaternion());
 
   const routeGeometry = useSimulationStore((s) => s.routeGeometry);
 
@@ -64,54 +55,46 @@ function CameraController() {
     }
   }, [camera]);
 
-  useFrame((_, delta) => {
-    timeRef.current += delta;
-    const t = timeRef.current;
-
+  useFrame(() => {
     const store = useSimulationStore.getState();
     const player = store.player;
     const speedRatio = player.speedMph / PHYSICS.MAX_SPEED_MPH;
     const posS = store.playerPositionS;
     const samples = samplesRef.current;
 
-    let roadHeading = 0;
-    const laneCount = store.routeGeometry?.laneCount ?? 4;
-    const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
-    const playerLaneX = (player.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad + player.lateralOffset;
-
+    // Get road tangent at player position
+    let tangent = new THREE.Vector3(0, 0, 1);
     if (samples.length > 0) {
       const sample = interpolateSampleAtS(samples, posS);
-      roadHeading = Math.atan2(sample.tangent.x, sample.tangent.z);
+      if (sample.tangent.lengthSq() > 0.001) {
+        tangent.copy(sample.tangent).normalize();
+      }
     }
 
-    smoothHeadingRef.current = lerpAngle(
-      smoothHeadingRef.current,
-      roadHeading,
-      CAMERA_HEADING_LERP
+    // Smooth the tangent direction
+    if (smoothTangentRef.current === null) {
+      smoothTangentRef.current = tangent.clone();
+    } else {
+      smoothTangentRef.current.lerp(tangent, CAMERA_HEADING_LERP).normalize();
+    }
+
+    const laneCount = store.routeGeometry?.laneCount ?? 4;
+    const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
+    const playerLaneX =
+      (player.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS -
+      halfRoad +
+      player.lateralOffset;
+
+    camera.position.set(playerLaneX, DRIVER_EYE_HEIGHT, CAMERA_FORWARD_OFFSET);
+
+    // Use lookAt to orient camera — preserves handedness (no L/R mirror)
+    const st = smoothTangentRef.current;
+    const lookTarget = new THREE.Vector3(
+      camera.position.x + st.x * 100,
+      camera.position.y + CAMERA_PITCH * 20,
+      camera.position.z + st.z * 100
     );
-
-    const bob = Math.sin(t * BOB_FREQUENCY * Math.PI * 2) * BOB_AMPLITUDE * speedRatio;
-    const sway = Math.sin(t * SWAY_FREQUENCY * Math.PI * 2) * SWAY_AMPLITUDE * speedRatio;
-
-    posRef.current.set(playerLaneX + sway, DRIVER_EYE_HEIGHT + bob, CAMERA_FORWARD_OFFSET);
-    camera.position.lerp(posRef.current, 0.15);
-
-    const lookAheadDist = 30 + speedRatio * 40;
-    const lookHeading = smoothHeadingRef.current;
-    const lookX = playerLaneX + Math.sin(lookHeading) * lookAheadDist;
-    const lookZ = Math.cos(lookHeading) * lookAheadDist;
-
-    targetRef.current.set(lookX, -2.0, lookZ);
-
-    camera.up.copy(WORLD_UP);
-    lookAtMatrixRef.current.lookAt(camera.position, targetRef.current, WORLD_UP);
-    lookAtQuatRef.current.setFromRotationMatrix(lookAtMatrixRef.current);
-
-    const steerRoll = (-player.steerAngleDeg / PHYSICS.MAX_STEER_DEG) * ROLL_FACTOR;
-    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(lookAtQuatRef.current);
-    rollQuatRef.current.setFromAxisAngle(forward, steerRoll);
-
-    camera.quaternion.copy(lookAtQuatRef.current).premultiply(rollQuatRef.current);
+    camera.lookAt(lookTarget);
 
     if (camera instanceof THREE.PerspectiveCamera) {
       const targetFov = BASE_FOV + MAX_FOV_BOOST * speedRatio;
@@ -133,7 +116,6 @@ function DriverScene() {
       <TrafficVehicles />
       <Scenery />
       <SpeedLines />
-      <RearViewMirror />
       <PostProcessing />
     </>
   );
@@ -145,8 +127,8 @@ export function DriverView() {
       shadows
       gl={{
         antialias: true,
-        toneMapping: THREE.NoToneMapping,
-        toneMappingExposure: 1.0,
+        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMappingExposure: 0.8,
         outputColorSpace: THREE.SRGBColorSpace,
         powerPreference: "high-performance",
       }}

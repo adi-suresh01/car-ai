@@ -1,5 +1,6 @@
 import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
+import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
 import { useSimulationStore } from "../state/simulationStore";
 import {
@@ -18,69 +19,6 @@ import type { RouteGeometry } from "../models/types";
 
 const TREE_COUNT = 200;
 const GUARDRAIL_SPACING = 4;
-
-function createAsphaltTexture(): THREE.DataTexture {
-  const size = 256;
-  const data = new Uint8Array(size * size * 4);
-
-  for (let i = 0; i < size * size; i++) {
-    const noise = Math.random() * 20 - 10;
-    const base = 42 + noise;
-    const idx = i * 4;
-    data[idx] = base;
-    data[idx + 1] = base + 2;
-    data[idx + 2] = base + 4;
-    data[idx + 3] = 255;
-  }
-
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(4, 60);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function createNormalTexture(): THREE.DataTexture {
-  const size = 128;
-  const data = new Uint8Array(size * size * 4);
-
-  for (let i = 0; i < size * size; i++) {
-    const idx = i * 4;
-    data[idx] = 128 + (Math.random() - 0.5) * 30;
-    data[idx + 1] = 128 + (Math.random() - 0.5) * 30;
-    data[idx + 2] = 255;
-    data[idx + 3] = 255;
-  }
-
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(4, 60);
-  texture.needsUpdate = true;
-  return texture;
-}
-
-function createRoughnessTexture(): THREE.DataTexture {
-  const size = 128;
-  const data = new Uint8Array(size * size * 4);
-
-  for (let i = 0; i < size * size; i++) {
-    const idx = i * 4;
-    const v = 180 + Math.random() * 40;
-    data[idx] = v;
-    data[idx + 1] = v;
-    data[idx + 2] = v;
-    data[idx + 3] = 255;
-  }
-
-  const texture = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
-  texture.wrapS = THREE.RepeatWrapping;
-  texture.wrapT = THREE.RepeatWrapping;
-  texture.repeat.set(4, 60);
-  texture.needsUpdate = true;
-  return texture;
-}
 
 interface RoadGeometryState {
   samples: SplineSample[];
@@ -101,11 +39,19 @@ function RoadSurface({ samples, geometry }: RoadGeometryState) {
   const meshRef = useRef<THREE.Mesh>(null);
   const playerOriginRef = useRef(new THREE.Vector3());
 
-  const textures = useMemo(() => ({
-    diffuse: createAsphaltTexture(),
-    normal: createNormalTexture(),
-    roughness: createRoughnessTexture(),
-  }), []);
+  const [diffuse, normal, roughness] = useTexture([
+    "/textures/asphalt-diffuse.jpg",
+    "/textures/asphalt-normal.jpg",
+    "/textures/asphalt-roughness.jpg",
+  ]);
+
+  useMemo(() => {
+    for (const tex of [diffuse, normal, roughness]) {
+      tex.wrapS = THREE.RepeatWrapping;
+      tex.wrapT = THREE.RepeatWrapping;
+      tex.repeat.set(4, 60);
+    }
+  }, [diffuse, normal, roughness]);
 
   const roadBufferGeom = useMemo(() => {
     const meshData = buildRoadMesh(samples, geometry.laneCount, geometry.laneWidth);
@@ -136,15 +82,16 @@ function RoadSurface({ samples, geometry }: RoadGeometryState) {
   return (
     <mesh ref={meshRef} geometry={roadBufferGeom} receiveShadow>
       <meshStandardMaterial
-        map={textures.diffuse}
-        normalMap={textures.normal}
-        roughnessMap={textures.roughness}
+        map={diffuse}
+        normalMap={normal}
+        roughnessMap={roughness}
         roughness={0.85}
         metalness={0.05}
-        color={0x4a4a4a}
+        color={0x555555}
+        side={THREE.DoubleSide}
         polygonOffset
-        polygonOffsetFactor={-2}
-        polygonOffsetUnits={-2}
+        polygonOffsetFactor={1}
+        polygonOffsetUnits={1}
       />
     </mesh>
   );
@@ -201,7 +148,8 @@ function LaneMarkings({ samples, geometry }: RoadGeometryState) {
           <meshStandardMaterial
             color={0xffdd44}
             emissive={0xffaa00}
-            emissiveIntensity={0.5}
+            emissiveIntensity={0.8}
+            side={THREE.DoubleSide}
           />
         </mesh>
       ))}
@@ -209,10 +157,9 @@ function LaneMarkings({ samples, geometry }: RoadGeometryState) {
         <mesh key={`dashed-${i}`} geometry={geom}>
           <meshStandardMaterial
             color={0xffffff}
-            emissive={0xcccccc}
-            emissiveIntensity={0.3}
-            transparent
-            opacity={0.85}
+            emissive={0xeeeeee}
+            emissiveIntensity={0.6}
+            side={THREE.DoubleSide}
           />
         </mesh>
       ))}
@@ -221,31 +168,133 @@ function LaneMarkings({ samples, geometry }: RoadGeometryState) {
 }
 
 function GuardRails({ samples, geometry }: RoadGeometryState) {
-  const leftMeshRef = useRef<THREE.InstancedMesh>(null);
-  const rightMeshRef = useRef<THREE.InstancedMesh>(null);
   const groupRef = useRef<THREE.Group>(null);
 
-  const railData = useMemo(
-    () => buildGuardrailPositions(samples, geometry.laneCount, geometry.laneWidth, GUARDRAIL_SPACING),
-    [samples, geometry]
-  );
+  // Build continuous barrier geometry along the road edges
+  const { leftBarrier, rightBarrier } = useMemo(() => {
+    const laneCount = geometry.laneCount;
+    const laneWidth = geometry.laneWidth;
+    const halfWidth = (laneCount * laneWidth) / 2 + 1.5;
+    const barrierHeight = 0.75;
+    const barrierThickness = 0.12;
+    const postWidth = 0.1;
+    const postSpacing = 4; // meters between posts
+    const railY = 0.45; // height of horizontal rail
 
-  const postGeom = useMemo(() => new THREE.BoxGeometry(0.1, 0.8, 0.1), []);
+    function buildBarrierGeometry(side: number) {
+      const positions: number[] = [];
+      const normals: number[] = [];
+      const indices: number[] = [];
 
-  useEffect(() => {
-    if (leftMeshRef.current) {
-      railData.left.forEach((matrix, i) => {
-        leftMeshRef.current!.setMatrixAt(i, matrix);
-      });
-      leftMeshRef.current.instanceMatrix.needsUpdate = true;
+      // Horizontal rail — continuous strip along road
+      const step = 2;
+      const railVerts: number[] = [];
+      const railNorms: number[] = [];
+      const railIdx: number[] = [];
+
+      for (let i = 0; i < samples.length; i += step) {
+        const s = samples[i];
+        const nx = s.normal.x * halfWidth * side;
+        const nz = s.normal.z * halfWidth * side;
+        const bx = s.position.x + nx;
+        const bz = s.position.z + nz;
+
+        // Outward normal for the barrier face
+        const outX = s.normal.x * side;
+        const outZ = s.normal.z * side;
+
+        const idx = railVerts.length / 3;
+
+        // Bottom of rail (inner face)
+        railVerts.push(bx, railY - barrierThickness, bz);
+        railNorms.push(-outX, 0, -outZ);
+        // Top of rail (inner face)
+        railVerts.push(bx, railY + barrierThickness, bz);
+        railNorms.push(-outX, 0, -outZ);
+        // Bottom of rail (outer face)
+        railVerts.push(bx + outX * barrierThickness, railY - barrierThickness, bz + outZ * barrierThickness);
+        railNorms.push(outX, 0, outZ);
+        // Top of rail (outer face)
+        railVerts.push(bx + outX * barrierThickness, railY + barrierThickness, bz + outZ * barrierThickness);
+        railNorms.push(outX, 0, outZ);
+
+        // Top face
+        railVerts.push(bx, railY + barrierThickness, bz);
+        railNorms.push(0, 1, 0);
+        railVerts.push(bx + outX * barrierThickness, railY + barrierThickness, bz + outZ * barrierThickness);
+        railNorms.push(0, 1, 0);
+
+        if (i > 0) {
+          const prev = idx - 6;
+          // Inner face quad
+          railIdx.push(prev, prev + 1, idx + 1, prev, idx + 1, idx);
+          // Outer face quad
+          railIdx.push(prev + 2, idx + 2, idx + 3, prev + 2, idx + 3, prev + 3);
+          // Top face quad
+          railIdx.push(prev + 4, idx + 4, idx + 5, prev + 4, idx + 5, prev + 5);
+        }
+      }
+
+      positions.push(...railVerts);
+      normals.push(...railNorms);
+      indices.push(...railIdx);
+
+      // Posts — vertical elements at intervals
+      const postBaseIdx = positions.length / 3;
+      let postCount = 0;
+
+      for (let i = 0; i < samples.length; i += Math.round(postSpacing / 2)) {
+        const s = samples[i];
+        const nx = s.normal.x * halfWidth * side;
+        const nz = s.normal.z * halfWidth * side;
+        const cx = s.position.x + nx;
+        const cz = s.position.z + nz;
+
+        // Post is a vertical box
+        const hw = postWidth / 2;
+        const hd = postWidth / 2;
+        const baseY = 0.05;
+        const topY = barrierHeight;
+
+        const tx = s.tangent.x;
+        const tz = s.tangent.z;
+
+        const idx = positions.length / 3;
+
+        // Front face (toward road)
+        positions.push(cx - tx * hd, baseY, cz - tz * hd);
+        positions.push(cx - tx * hd, topY, cz - tz * hd);
+        positions.push(cx + tx * hd, topY, cz + tz * hd);
+        positions.push(cx + tx * hd, baseY, cz + tz * hd);
+        for (let n = 0; n < 4; n++) normals.push(-s.normal.x * side, 0, -s.normal.z * side);
+        indices.push(idx, idx + 1, idx + 2, idx, idx + 2, idx + 3);
+
+        // Outer face
+        const oIdx = positions.length / 3;
+        const ox = s.normal.x * side * postWidth;
+        const oz = s.normal.z * side * postWidth;
+        positions.push(cx - tx * hd + ox, baseY, cz - tz * hd + oz);
+        positions.push(cx - tx * hd + ox, topY, cz - tz * hd + oz);
+        positions.push(cx + tx * hd + ox, topY, cz + tz * hd + oz);
+        positions.push(cx + tx * hd + ox, baseY, cz + tz * hd + oz);
+        for (let n = 0; n < 4; n++) normals.push(s.normal.x * side, 0, s.normal.z * side);
+        indices.push(oIdx, oIdx + 2, oIdx + 1, oIdx, oIdx + 3, oIdx + 2);
+
+        postCount++;
+      }
+
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+      geom.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+      geom.setIndex(indices);
+      return geom;
     }
-    if (rightMeshRef.current) {
-      railData.right.forEach((matrix, i) => {
-        rightMeshRef.current!.setMatrixAt(i, matrix);
-      });
-      rightMeshRef.current.instanceMatrix.needsUpdate = true;
-    }
-  }, [railData]);
+
+    return {
+      leftBarrier: buildBarrierGeometry(1),
+      rightBarrier: buildBarrierGeometry(-1),
+    };
+  }, [samples, geometry]);
 
   useFrame(() => {
     const store = useSimulationStore.getState();
@@ -261,24 +310,14 @@ function GuardRails({ samples, geometry }: RoadGeometryState) {
     }
   });
 
-  const maxCount = Math.max(railData.left.length, railData.right.length, 1);
-
   return (
     <group ref={groupRef}>
-      <instancedMesh
-        ref={leftMeshRef}
-        args={[postGeom, undefined, maxCount]}
-        count={railData.left.length}
-      >
-        <meshStandardMaterial color={0x888888} metalness={0.8} roughness={0.3} />
-      </instancedMesh>
-      <instancedMesh
-        ref={rightMeshRef}
-        args={[postGeom, undefined, maxCount]}
-        count={railData.right.length}
-      >
-        <meshStandardMaterial color={0x888888} metalness={0.8} roughness={0.3} />
-      </instancedMesh>
+      <mesh geometry={leftBarrier}>
+        <meshStandardMaterial color={0x707070} metalness={0.7} roughness={0.35} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh geometry={rightBarrier}>
+        <meshStandardMaterial color={0x707070} metalness={0.7} roughness={0.35} side={THREE.DoubleSide} />
+      </mesh>
     </group>
   );
 }

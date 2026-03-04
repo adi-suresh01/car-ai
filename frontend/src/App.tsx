@@ -136,6 +136,7 @@ export function App() {
   const showDebugPanel = useSimulationStore((s) => s.showDebugPanel);
   const toggleDebugPanel = useSimulationStore((s) => s.toggleDebugPanel);
   const toggleHelpOverlay = useSimulationStore((s) => s.toggleHelpOverlay);
+  const [infotainmentExpanded, setInfotainmentExpanded] = useState(false);
 
   useEffect(() => {
     const setLayout = useSimulationStore.getState().setLayout;
@@ -213,7 +214,18 @@ export function App() {
           <MissionStatus />
         </div>
 
-        <div className="dashboard-infotainment">
+        <div
+          className={`dashboard-infotainment ${infotainmentExpanded ? "expanded" : "collapsed"}`}
+          onClick={() => { if (!infotainmentExpanded) setInfotainmentExpanded(true); }}
+        >
+          {infotainmentExpanded && (
+            <button
+              className="infotainment-collapse-btn"
+              onClick={(e) => { e.stopPropagation(); setInfotainmentExpanded(false); }}
+            >
+              ✕
+            </button>
+          )}
           <CarPlayDisplay />
         </div>
 

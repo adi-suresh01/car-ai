@@ -203,13 +203,19 @@ impl Vehicle {
             return;
         }
 
-        let mode = if self.raw_steer_input.abs() > MANUAL_STEER_DEADZONE {
-            LaneKeepMode::AssistOnly
+        if self.raw_steer_input.abs() > MANUAL_STEER_DEADZONE {
+            // Manual steering active: use the player's input directly,
+            // with a small heading-alignment assist layered on top.
+            let manual_deg = self.raw_steer_input * MAX_STEER_DEG;
+            let heading_correction = HEADING_ASSIST_GAIN * (-self.heading_rad) * 0.3;
+            let max_delta = STEER_RATE_DEG_PER_S * dt;
+            let target = manual_deg + heading_correction;
+            let delta = (target - self.steer_angle_deg).clamp(-max_delta, max_delta);
+            self.steer_angle_deg = (self.steer_angle_deg + delta).clamp(-MAX_STEER_DEG, MAX_STEER_DEG);
         } else {
-            LaneKeepMode::FullAuto
+            // No manual input: full lane-keep centering
+            self.steer_angle_deg = self.lane_keep_steer_straight(LaneKeepMode::FullAuto, dt);
         };
-
-        self.steer_angle_deg = self.lane_keep_steer_straight(mode, dt);
     }
 
     /// Compute lane-keeping steering for the Frenet (road-spline) path.
@@ -242,13 +248,19 @@ impl Vehicle {
             return;
         }
 
-        let mode = if self.raw_steer_input.abs() > MANUAL_STEER_DEADZONE {
-            LaneKeepMode::AssistOnly
+        if self.raw_steer_input.abs() > MANUAL_STEER_DEADZONE {
+            // Manual steering active: use the player's input directly,
+            // with a small heading-alignment assist layered on top.
+            let manual_deg = self.raw_steer_input * MAX_STEER_DEG;
+            let heading_correction = HEADING_ASSIST_GAIN * (-self.steer_angle_deg.to_radians()) * 0.3;
+            let max_delta = STEER_RATE_DEG_PER_S * dt;
+            let target = manual_deg + heading_correction;
+            let delta = (target - self.steer_angle_deg).clamp(-max_delta, max_delta);
+            self.steer_angle_deg = (self.steer_angle_deg + delta).clamp(-MAX_STEER_DEG, MAX_STEER_DEG);
         } else {
-            LaneKeepMode::FullAuto
+            // No manual input: full lane-keep centering
+            self.steer_angle_deg = self.lane_keep_steer_frenet(road, LaneKeepMode::FullAuto, dt);
         };
-
-        self.steer_angle_deg = self.lane_keep_steer_frenet(road, mode, dt);
     }
 
     pub fn step_on_road(&mut self, road: &RoadSpline, dt: f64) {

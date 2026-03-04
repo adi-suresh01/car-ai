@@ -69,13 +69,11 @@ export async function loadScenario(
 export async function transcribeAudio(
   audioBlob: Blob
 ): Promise<{ text: string }> {
-  const formData = new FormData();
-  formData.append("audio", audioBlob);
-
   const url = `${API_BASE}/api/voice/transcribe`;
   const response = await fetch(url, {
     method: "POST",
-    body: formData,
+    body: audioBlob,
+    headers: { "Content-Type": "audio/pcm" },
   });
 
   if (!response.ok) {
