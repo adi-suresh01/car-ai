@@ -32,8 +32,14 @@ impl ServerConfig {
                 .ok()
                 .and_then(|v| v.parse().ok())
                 .unwrap_or(4000),
-            xi_api_key: std::env::var("XI_API_KEY").ok(),
-            xi_webhook_secret: std::env::var("XI_WEBHOOK_SECRET").ok(),
+            xi_api_key: non_empty_env("XI_API_KEY"),
+            xi_webhook_secret: non_empty_env("XI_WEBHOOK_SECRET"),
         }
     }
+}
+
+fn non_empty_env(key: &str) -> Option<String> {
+    std::env::var(key)
+        .ok()
+        .filter(|v| !v.is_empty())
 }

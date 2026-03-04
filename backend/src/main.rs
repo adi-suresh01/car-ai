@@ -15,6 +15,10 @@ use log::info;
 use std::sync::Mutex;
 use tokio::sync::broadcast;
 
+/// 10 MB payload limit for voice audio uploads (default Actix limit is 256 KiB,
+/// which is too small for multi-second voice captures at 16kHz/16-bit PCM).
+const VOICE_PAYLOAD_LIMIT: usize = 10 * 1024 * 1024;
+
 use api::simulation::*;
 use api::types::SimulationSnapshot;
 use config::ServerConfig;
@@ -36,14 +40,13 @@ async fn main() -> std::io::Result<()> {
     let mut world = World::new();
     let mut traffic_manager = TrafficManager::new();
     traffic_manager.spawn_initial(&mut world.npcs);
-    world.mission.set_cruise(65.0, mission::state::MissionSource::System);
 
     let world_data = web::Data::new(Mutex::new(world));
     let traffic_data = web::Data::new(Mutex::new(traffic_manager));
     let elevenlabs = web::Data::new(ElevenLabsClient::new(server_config.xi_api_key));
 
     let scenarios_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data/scenarios");
+        .join("../data/scenarios");
     let scenarios_dir = scenarios_dir.as_path();
     let scenario_loader = ScenarioLoader::new(scenarios_dir);
     let scenario_data = web::Data::new(Mutex::new(scenario_loader));
@@ -109,6 +112,7 @@ async fn main() -> std::io::Result<()> {
 
         App::new()
             .wrap(cors)
+            .app_data(web::PayloadConfig::new(VOICE_PAYLOAD_LIMIT))
             .app_data(world_data.clone())
             .app_data(traffic_data.clone())
             .app_data(elevenlabs.clone())

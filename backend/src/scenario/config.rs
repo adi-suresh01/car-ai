@@ -117,7 +117,7 @@ mod tests {
 
     #[test]
     fn deserialize_default_scenario() {
-        let json = include_str!("../../../../data/scenarios/default.json");
+        let json = include_str!("../../../data/scenarios/default.json");
         let config: ScenarioConfig = serde_json::from_str(json).unwrap();
         assert_eq!(config.name, "highway_default");
         assert_eq!(config.road.num_lanes, 5);
@@ -135,7 +135,7 @@ mod tests {
 
     #[test]
     fn scenario_summary_captures_key_fields() {
-        let json = include_str!("../../../../data/scenarios/default.json");
+        let json = include_str!("../../../data/scenarios/default.json");
         let config: ScenarioConfig = serde_json::from_str(json).unwrap();
         let summary = ScenarioSummary::from(&config);
         assert_eq!(summary.name, "highway_default");

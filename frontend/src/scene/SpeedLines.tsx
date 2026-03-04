@@ -77,7 +77,9 @@ export function SpeedLines() {
     const store = useSimulationStore.getState();
     const speedMph = store.player.speedMph;
     const speedRatio = Math.max(0, (speedMph - SPEED_THRESHOLD_MPH) / (PHYSICS.MAX_SPEED_MPH - SPEED_THRESHOLD_MPH));
-    const posX = store.player.laneIndex * PHYSICS.LANE_WIDTH_METERS + store.player.lateralOffset;
+    const laneCount = store.routeGeometry?.laneCount ?? 4;
+    const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
+    const posX = (store.player.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad + store.player.lateralOffset;
 
     if (speedRatio <= 0 || !pointsRef.current) return;
 

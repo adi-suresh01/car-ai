@@ -1,3 +1,5 @@
+use log::debug;
+
 use crate::mission::state::{LaneChangeDirection, MissionMode, MissionSource};
 
 #[derive(Debug, Clone)]
@@ -93,7 +95,10 @@ pub fn intent_to_mission_update(intent: &VoiceIntent) -> Option<MissionUpdate> {
             lane_change_direction: None,
             source: MissionSource::Voice,
         }),
-        VoiceIntent::Unknown(_) => None,
+        VoiceIntent::Unknown(ref utterance) => {
+            debug!("Unrecognized voice intent: {:?}", utterance);
+            None
+        }
     }
 }
 

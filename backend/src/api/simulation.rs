@@ -7,9 +7,15 @@ use crate::physics::world::World;
 use crate::rl::recorder::EpisodeRecorder;
 use crate::scenario::loader::ScenarioLoader;
 use crate::traffic::manager::TrafficManager;
+use crate::voice::elevenlabs::ElevenLabsClient;
 
-pub async fn get_health() -> HttpResponse {
-    HttpResponse::Ok().json(serde_json::json!({ "status": "ok" }))
+pub async fn get_health(elevenlabs: web::Data<ElevenLabsClient>) -> HttpResponse {
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": "ok",
+        "voice": {
+            "elevenlabs_configured": elevenlabs.has_api_key(),
+        }
+    }))
 }
 
 pub async fn get_layout() -> HttpResponse {
@@ -69,18 +75,10 @@ pub async fn post_player_input(
 ) -> HttpResponse {
     let mut world = world.lock().unwrap();
 
-    if let Some(steering) = body.steering {
-        world.player.steer_angle_deg = steering.clamp(
-            -crate::config::MAX_STEER_DEG,
-            crate::config::MAX_STEER_DEG,
-        );
-    }
-    if let Some(throttle) = body.throttle {
-        world.player.throttle = throttle.clamp(0.0, 1.0);
-    }
-    if let Some(brake) = body.brake {
-        world.player.brake = brake.clamp(0.0, 1.0);
-    }
+    let steering = body.steering.unwrap_or(0.0);
+    let throttle = body.throttle.unwrap_or(0.0);
+    let brake = body.brake.unwrap_or(0.0);
+    world.set_manual_input(steering, throttle, brake);
 
     let snapshot = PlayerSnapshot::from(&world.player);
     HttpResponse::Ok().json(snapshot)
@@ -120,7 +118,7 @@ pub async fn post_record_start(
 ) -> HttpResponse {
     let mut recorder = recorder.lock().unwrap();
     let recordings_dir = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
-        .join("../../data/recordings");
+        .join("../data/recordings");
     match recorder.start(recordings_dir.to_str().unwrap_or("data/recordings")) {
         Ok(filename) => HttpResponse::Ok().json(serde_json::json!({
             "status": "recording_started",

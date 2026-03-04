@@ -152,6 +152,8 @@ impl TrafficManager {
             v.lateral_t = 0.0;
             v.road_heading = 0.0;
             v.curvature = 0.0;
+            v.raw_steer_input = 0.0;
+            v.steering_target_lane = None;
             v
         } else {
             Vehicle::new(id, vehicle_type, lane)

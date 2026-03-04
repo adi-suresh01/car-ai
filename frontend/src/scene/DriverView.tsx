@@ -13,16 +13,18 @@ import { PostProcessing } from "./PostProcessing";
 import { SpeedLines } from "./SpeedLines";
 import { RearViewMirror } from "./RearViewMirror";
 
-const BASE_FOV = 60;
+const BASE_FOV = 65;
 const MAX_FOV_BOOST = 6;
-const DRIVER_EYE_HEIGHT = 1.25;
-const CAMERA_FORWARD_OFFSET = -0.3;
-const BOB_AMPLITUDE = 0.003;
+const DRIVER_EYE_HEIGHT = 1.22;
+const CAMERA_FORWARD_OFFSET = 0.05;
+const BOB_AMPLITUDE = 0.002;
 const BOB_FREQUENCY = 2.5;
-const SWAY_AMPLITUDE = 0.002;
+const SWAY_AMPLITUDE = 0.0015;
 const SWAY_FREQUENCY = 1.3;
-const ROLL_FACTOR = 0.015;
+const ROLL_FACTOR = 0.012;
 const CAMERA_HEADING_LERP = 0.08;
+
+const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
 function lerpAngle(current: number, target: number, alpha: number): number {
   let diff = target - current;
@@ -38,6 +40,9 @@ function CameraController() {
   const targetRef = useRef(new THREE.Vector3());
   const smoothHeadingRef = useRef(0);
   const samplesRef = useRef<SplineSample[]>([]);
+  const lookAtQuatRef = useRef(new THREE.Quaternion());
+  const rollQuatRef = useRef(new THREE.Quaternion());
+  const lookAtMatrixRef = useRef(new THREE.Matrix4());
 
   const routeGeometry = useSimulationStore((s) => s.routeGeometry);
 
@@ -50,6 +55,7 @@ function CameraController() {
   }, [routeGeometry]);
 
   useEffect(() => {
+    camera.up.copy(WORLD_UP);
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.fov = BASE_FOV;
       camera.near = 0.1;
@@ -69,7 +75,9 @@ function CameraController() {
     const samples = samplesRef.current;
 
     let roadHeading = 0;
-    const playerLaneX = player.laneIndex * PHYSICS.LANE_WIDTH_METERS + player.lateralOffset;
+    const laneCount = store.routeGeometry?.laneCount ?? 4;
+    const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
+    const playerLaneX = (player.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad + player.lateralOffset;
 
     if (samples.length > 0) {
       const sample = interpolateSampleAtS(samples, posS);
@@ -89,15 +97,21 @@ function CameraController() {
     camera.position.lerp(posRef.current, 0.15);
 
     const lookAheadDist = 30 + speedRatio * 40;
-    const combinedHeading = smoothHeadingRef.current + player.headingRad;
-    const lookX = playerLaneX + Math.sin(combinedHeading) * lookAheadDist;
-    const lookZ = Math.cos(combinedHeading) * lookAheadDist;
+    const lookHeading = smoothHeadingRef.current;
+    const lookX = playerLaneX + Math.sin(lookHeading) * lookAheadDist;
+    const lookZ = Math.cos(lookHeading) * lookAheadDist;
 
-    targetRef.current.set(lookX, DRIVER_EYE_HEIGHT - 0.15, lookZ);
-    camera.lookAt(targetRef.current);
+    targetRef.current.set(lookX, -2.0, lookZ);
+
+    camera.up.copy(WORLD_UP);
+    lookAtMatrixRef.current.lookAt(camera.position, targetRef.current, WORLD_UP);
+    lookAtQuatRef.current.setFromRotationMatrix(lookAtMatrixRef.current);
 
     const steerRoll = (-player.steerAngleDeg / PHYSICS.MAX_STEER_DEG) * ROLL_FACTOR;
-    camera.rotation.z = steerRoll;
+    const forward = new THREE.Vector3(0, 0, -1).applyQuaternion(lookAtQuatRef.current);
+    rollQuatRef.current.setFromAxisAngle(forward, steerRoll);
+
+    camera.quaternion.copy(lookAtQuatRef.current).premultiply(rollQuatRef.current);
 
     if (camera instanceof THREE.PerspectiveCamera) {
       const targetFov = BASE_FOV + MAX_FOV_BOOST * speedRatio;
@@ -131,7 +145,7 @@ export function DriverView() {
       shadows
       gl={{
         antialias: true,
-        toneMapping: THREE.ACESFilmicToneMapping,
+        toneMapping: THREE.NoToneMapping,
         toneMappingExposure: 1.0,
         outputColorSpace: THREE.SRGBColorSpace,
         powerPreference: "high-performance",
@@ -140,7 +154,8 @@ export function DriverView() {
         fov: BASE_FOV,
         near: 0.1,
         far: 1200,
-        position: [7.2, DRIVER_EYE_HEIGHT, 0],
+        position: [1.8, DRIVER_EYE_HEIGHT, CAMERA_FORWARD_OFFSET],
+        up: [0, 1, 0],
       }}
       style={{ width: "100%", height: "100%" }}
       frameloop="always"

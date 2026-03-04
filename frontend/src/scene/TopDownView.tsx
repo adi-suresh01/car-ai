@@ -1,61 +1,238 @@
-import { useRef } from "react";
+import { useRef, useMemo } from "react";
 import { Canvas, useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
 import { useSimulationStore } from "../state/simulationStore";
 import { PHYSICS } from "../models/types";
-import { Road } from "./Road";
-import { TrafficVehicles } from "./TrafficVehicle";
+import {
+  sampleSpline,
+  interpolateSampleAtS,
+  buildRoadMesh,
+  buildLaneMarkings,
+  type SplineSample,
+} from "./roadSpline";
+import type { InterpolatedVehicle } from "../state/simulationStore";
 
 const TOP_DOWN_HEIGHT = 80;
-const LANE_COUNT = 5;
+const VISIBLE_RANGE = 250;
 
 function TopDownCamera() {
   const { camera } = useThree();
+  const samplesRef = useRef<SplineSample[]>([]);
+  const routeGeometry = useSimulationStore((s) => s.routeGeometry);
+
+  if (routeGeometry && samplesRef.current.length === 0) {
+    samplesRef.current = sampleSpline(routeGeometry);
+  }
 
   useFrame(() => {
-    const posX = (LANE_COUNT * PHYSICS.LANE_WIDTH_METERS) / 2;
+    const store = useSimulationStore.getState();
+    const posS = store.playerPositionS;
+    const samples = samplesRef.current;
 
-    camera.position.set(posX, TOP_DOWN_HEIGHT, 0);
-    camera.lookAt(posX, 0, 20);
+    camera.up.set(0, 0, 1);
+
+    if (samples.length > 0) {
+      const sample = interpolateSampleAtS(samples, posS);
+      const lookAhead = 30;
+      const offsetX = sample.tangent.x * lookAhead;
+      const offsetZ = sample.tangent.z * lookAhead;
+      camera.position.set(
+        sample.position.x + offsetX,
+        TOP_DOWN_HEIGHT,
+        sample.position.z + offsetZ
+      );
+      camera.lookAt(
+        sample.position.x + offsetX,
+        0,
+        sample.position.z + offsetZ
+      );
+    }
   });
 
   return null;
 }
 
+function TacticalRoad() {
+  const samplesRef = useRef<SplineSample[]>([]);
+  const routeGeometry = useSimulationStore((s) => s.routeGeometry);
+
+  if (routeGeometry && samplesRef.current.length === 0) {
+    samplesRef.current = sampleSpline(routeGeometry);
+  }
+
+  const roadGeom = useMemo(() => {
+    const samples = samplesRef.current;
+    if (samples.length < 2 || !routeGeometry) return null;
+
+    const meshData = buildRoadMesh(samples, routeGeometry.laneCount, routeGeometry.laneWidth);
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute("position", new THREE.BufferAttribute(meshData.positions, 3));
+    geom.setAttribute("normal", new THREE.BufferAttribute(meshData.normals, 3));
+    geom.setAttribute("uv", new THREE.BufferAttribute(meshData.uvs, 2));
+    geom.setIndex(new THREE.BufferAttribute(meshData.indices, 1));
+    return geom;
+  }, [samplesRef.current.length, routeGeometry]);
+
+  const markingGeoms = useMemo(() => {
+    const samples = samplesRef.current;
+    if (samples.length < 2 || !routeGeometry) return { solid: [], dashed: [] };
+
+    const markings = buildLaneMarkings(samples, routeGeometry.laneCount, routeGeometry.laneWidth);
+
+    const buildGeom = (data: { positions: Float32Array; normals: Float32Array; uvs: Float32Array; indices: Uint32Array }) => {
+      const geom = new THREE.BufferGeometry();
+      geom.setAttribute("position", new THREE.BufferAttribute(data.positions, 3));
+      geom.setAttribute("normal", new THREE.BufferAttribute(data.normals, 3));
+      geom.setAttribute("uv", new THREE.BufferAttribute(data.uvs, 2));
+      geom.setIndex(new THREE.BufferAttribute(data.indices, 1));
+      return geom;
+    };
+
+    return {
+      solid: markings.solid.map(buildGeom),
+      dashed: markings.dashed.map(buildGeom),
+    };
+  }, [samplesRef.current.length, routeGeometry]);
+
+  if (!roadGeom) return null;
+
+  return (
+    <group>
+      <mesh geometry={roadGeom}>
+        <meshStandardMaterial
+          color={0x2a2e36}
+          roughness={0.9}
+          metalness={0}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+      {markingGeoms.solid.map((geom, i) => (
+        <mesh key={`solid-${i}`} geometry={geom}>
+          <meshStandardMaterial
+            color={0xffdd44}
+            emissive={0xffaa00}
+            emissiveIntensity={0.4}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+      {markingGeoms.dashed.map((geom, i) => (
+        <mesh key={`dashed-${i}`} geometry={geom}>
+          <meshStandardMaterial
+            color={0xffffff}
+            emissive={0xcccccc}
+            emissiveIntensity={0.3}
+            side={THREE.DoubleSide}
+          />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+function TacticalTerrain() {
+  const samplesRef = useRef<SplineSample[]>([]);
+  const routeGeometry = useSimulationStore((s) => s.routeGeometry);
+
+  if (routeGeometry && samplesRef.current.length === 0) {
+    samplesRef.current = sampleSpline(routeGeometry);
+  }
+
+  const terrainGeom = useMemo(() => {
+    const samples = samplesRef.current;
+    if (samples.length < 2) return null;
+    const center = samples[Math.floor(samples.length / 2)].position;
+    const half = 1200;
+    const cx = center.x;
+    const cz = center.z;
+    const positions = new Float32Array([
+      cx - half, -0.1, cz - half,
+      cx + half, -0.1, cz - half,
+      cx + half, -0.1, cz + half,
+      cx - half, -0.1, cz + half,
+    ]);
+    const normals = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
+    const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+    const geom = new THREE.BufferGeometry();
+    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+    geom.setIndex(new THREE.BufferAttribute(indices, 1));
+    return geom;
+  }, [samplesRef.current.length]);
+
+  if (!terrainGeom) return null;
+
+  return (
+    <mesh geometry={terrainGeom}>
+      <meshStandardMaterial color={0x1a3312} roughness={1} metalness={0} />
+    </mesh>
+  );
+}
+
 function PlayerMarker() {
-  const meshRef = useRef<THREE.Mesh>(null);
+  const groupRef = useRef<THREE.Group>(null);
   const glowRef = useRef<THREE.Mesh>(null);
   const timeRef = useRef(0);
+  const samplesRef = useRef<SplineSample[]>([]);
+  const routeGeometry = useSimulationStore((s) => s.routeGeometry);
+
+  if (routeGeometry && samplesRef.current.length === 0) {
+    samplesRef.current = sampleSpline(routeGeometry);
+  }
 
   useFrame((_, delta) => {
     timeRef.current += delta;
-    const player = useSimulationStore.getState().player;
-    const posX =
-      player.laneIndex * PHYSICS.LANE_WIDTH_METERS + player.lateralOffset;
+    const store = useSimulationStore.getState();
+    const player = store.player;
+    const posS = store.playerPositionS;
+    const samples = samplesRef.current;
+    const laneCount = store.routeGeometry?.laneCount ?? 4;
+    const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
+    const lateralPos = (player.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad + player.lateralOffset;
 
-    if (meshRef.current) {
-      meshRef.current.position.set(posX, 0.5, 0);
-      meshRef.current.rotation.y = -player.headingRad;
-    }
-    if (glowRef.current) {
-      glowRef.current.position.set(posX, 0.1, 0);
-      const pulse = 1 + Math.sin(timeRef.current * 3) * 0.15;
-      glowRef.current.scale.setScalar(pulse);
+    if (samples.length > 0) {
+      const sample = interpolateSampleAtS(samples, posS);
+      const roadHeading = Math.atan2(sample.tangent.x, sample.tangent.z);
+      const posX = sample.position.x + sample.normal.x * lateralPos;
+      const posZ = sample.position.z + sample.normal.z * lateralPos;
+
+      if (groupRef.current) {
+        groupRef.current.position.set(posX, 0.5, posZ);
+        groupRef.current.rotation.y = -roadHeading;
+      }
+      if (glowRef.current) {
+        glowRef.current.position.set(posX, 0.2, posZ);
+        const pulse = 1 + Math.sin(timeRef.current * 3) * 0.15;
+        glowRef.current.scale.setScalar(pulse);
+      }
     }
   });
 
   return (
     <>
-      <mesh ref={meshRef}>
-        <coneGeometry args={[1.5, 4, 4]} />
-        <meshStandardMaterial
-          color={0x00aaff}
-          emissive={0x0066cc}
-          emissiveIntensity={0.8}
-        />
-      </mesh>
+      <group ref={groupRef}>
+        {/* Car body rectangle */}
+        <mesh position={[0, 0.3, 0]}>
+          <boxGeometry args={[2.0, 0.6, 4.5]} />
+          <meshStandardMaterial
+            color={0x0088ff}
+            emissive={0x0066cc}
+            emissiveIntensity={0.6}
+          />
+        </mesh>
+        {/* Direction indicator - windshield */}
+        <mesh position={[0, 0.7, 1.2]}>
+          <boxGeometry args={[1.6, 0.3, 0.8]} />
+          <meshStandardMaterial
+            color={0x00bbff}
+            emissive={0x0099ff}
+            emissiveIntensity={0.8}
+          />
+        </mesh>
+      </group>
+      {/* Glow ring */}
       <mesh ref={glowRef} rotation={[-Math.PI / 2, 0, 0]}>
-        <ringGeometry args={[1.8, 2.4, 16]} />
+        <ringGeometry args={[3.5, 5, 24]} />
         <meshStandardMaterial
           color={0x00aaff}
           emissive={0x0066cc}
@@ -68,15 +245,87 @@ function PlayerMarker() {
   );
 }
 
+function NPCMarkers() {
+  const vehicles = useSimulationStore((s) => s.vehicles);
+  const samplesRef = useRef<SplineSample[]>([]);
+  const routeGeometry = useSimulationStore((s) => s.routeGeometry);
+
+  if (routeGeometry && samplesRef.current.length === 0) {
+    samplesRef.current = sampleSpline(routeGeometry);
+  }
+
+  return (
+    <>
+      {vehicles.map((v) => (
+        <NPCSingleMarker key={v.id} vehicle={v} samples={samplesRef.current} />
+      ))}
+    </>
+  );
+}
+
+function NPCSingleMarker({ vehicle, samples }: { vehicle: InterpolatedVehicle; samples: SplineSample[] }) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame(() => {
+    const store = useSimulationStore.getState();
+    const playerZ = store.player.positionZ;
+    const posS = store.playerPositionS;
+    const relZ = vehicle.position[2] - playerZ;
+
+    if (Math.abs(relZ) > VISIBLE_RANGE) {
+      if (groupRef.current) groupRef.current.visible = false;
+      return;
+    }
+
+    if (groupRef.current) groupRef.current.visible = true;
+
+    const laneCount = store.routeGeometry?.laneCount ?? 4;
+    const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
+    const lateralPos = (vehicle.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad;
+
+    if (samples.length > 0) {
+      const vehicleS = posS + relZ;
+      const clampedS = Math.max(0, Math.min(vehicleS, samples[samples.length - 1].s));
+      const sample = interpolateSampleAtS(samples, clampedS);
+      const posX = sample.position.x + sample.normal.x * lateralPos;
+      const posZ = sample.position.z + sample.normal.z * lateralPos;
+      const roadHeading = Math.atan2(sample.tangent.x, sample.tangent.z);
+
+      if (groupRef.current) {
+        groupRef.current.position.set(posX, 0.3, posZ);
+        groupRef.current.rotation.y = -roadHeading;
+      }
+    }
+  });
+
+  const color = vehicle.behavior === "aggressive" ? 0xff4422
+    : vehicle.behavior === "defensive" ? 0x44aa44
+    : 0xff8833;
+
+  return (
+    <group ref={groupRef}>
+      <mesh position={[0, 0.3, 0]}>
+        <boxGeometry args={[1.8, 0.5, 4.2]} />
+        <meshStandardMaterial
+          color={color}
+          emissive={color}
+          emissiveIntensity={0.4}
+        />
+      </mesh>
+    </group>
+  );
+}
+
 function TopDownScene() {
   return (
     <>
       <TopDownCamera />
-      <ambientLight intensity={0.6} />
-      <directionalLight position={[0, 100, 0]} intensity={1.0} />
-      <Road />
+      <ambientLight intensity={0.5} color={0xaabbdd} />
+      <directionalLight position={[0, 200, 50]} intensity={0.6} color={0xffffff} />
+      <TacticalTerrain />
+      <TacticalRoad />
       <PlayerMarker />
-      <TrafficVehicles />
+      <NPCMarkers />
     </>
   );
 }
@@ -89,12 +338,13 @@ export function TopDownView() {
         zoom: 5,
         near: 0.1,
         far: 500,
-        position: [9, TOP_DOWN_HEIGHT, 0],
+        position: [0, TOP_DOWN_HEIGHT, 0],
+        up: [0, 0, 1],
       }}
       style={{
         width: "100%",
         height: "100%",
-        background: "#1a1a2e",
+        background: "#0a0e14",
       }}
       frameloop="always"
       performance={{ min: 0.5 }}

@@ -29,8 +29,8 @@ const VEHICLE_PROFILES: Record<VehicleType, VehicleProfile> = {
     cabinLength: 2.4,
     wheelRadius: 0.33,
     wheelWidth: 0.22,
-    color: new THREE.Color(0.18, 0.22, 0.32),
-    cabinTint: new THREE.Color(0.08, 0.1, 0.14),
+    color: new THREE.Color(0.25, 0.35, 0.55),
+    cabinTint: new THREE.Color(0.12, 0.15, 0.2),
   },
   suv: {
     bodyLength: 4.9,
@@ -41,8 +41,8 @@ const VEHICLE_PROFILES: Record<VehicleType, VehicleProfile> = {
     cabinLength: 3.0,
     wheelRadius: 0.4,
     wheelWidth: 0.26,
-    color: new THREE.Color(0.35, 0.35, 0.38),
-    cabinTint: new THREE.Color(0.12, 0.12, 0.14),
+    color: new THREE.Color(0.5, 0.5, 0.55),
+    cabinTint: new THREE.Color(0.15, 0.15, 0.18),
   },
   truck: {
     bodyLength: 5.8,
@@ -53,8 +53,8 @@ const VEHICLE_PROFILES: Record<VehicleType, VehicleProfile> = {
     cabinLength: 2.2,
     wheelRadius: 0.42,
     wheelWidth: 0.28,
-    color: new THREE.Color(0.6, 0.58, 0.52),
-    cabinTint: new THREE.Color(0.15, 0.14, 0.12),
+    color: new THREE.Color(0.7, 0.65, 0.55),
+    cabinTint: new THREE.Color(0.2, 0.18, 0.15),
   },
   "sports-car": {
     bodyLength: 4.4,
@@ -65,8 +65,8 @@ const VEHICLE_PROFILES: Record<VehicleType, VehicleProfile> = {
     cabinLength: 1.8,
     wheelRadius: 0.3,
     wheelWidth: 0.24,
-    color: new THREE.Color(0.65, 0.12, 0.08),
-    cabinTint: new THREE.Color(0.08, 0.08, 0.08),
+    color: new THREE.Color(0.8, 0.15, 0.1),
+    cabinTint: new THREE.Color(0.1, 0.1, 0.1),
   },
   motorcycle: {
     bodyLength: 2.2,
@@ -77,8 +77,8 @@ const VEHICLE_PROFILES: Record<VehicleType, VehicleProfile> = {
     cabinLength: 0.8,
     wheelRadius: 0.32,
     wheelWidth: 0.14,
-    color: new THREE.Color(0.15, 0.15, 0.15),
-    cabinTint: new THREE.Color(0.1, 0.1, 0.1),
+    color: new THREE.Color(0.2, 0.2, 0.2),
+    cabinTint: new THREE.Color(0.12, 0.12, 0.12),
   },
 };
 
@@ -224,10 +224,10 @@ function ProceduralCarFull({ profile, behavior }: { profile: VehicleProfile; beh
         <meshStandardMaterial
           color={bodyColor}
           emissive={behaviorEmissive}
-          emissiveIntensity={behavior ? 0.15 : 0}
-          metalness={0.7}
-          roughness={0.25}
-          envMapIntensity={1.2}
+          emissiveIntensity={behavior ? 0.2 : 0}
+          metalness={0.35}
+          roughness={0.4}
+          envMapIntensity={0.8}
         />
       </mesh>
 
@@ -351,8 +351,11 @@ function TrafficVehicleSingle({ vehicle, playerZ, isTopDown }: TrafficVehiclePro
   const posRef = useRef({ laneX: 0, relZ: 0, headingAngle: 0 });
 
   useFrame(() => {
+    const store = useSimulationStore.getState();
+    const laneCount = store.routeGeometry?.laneCount ?? 4;
+    const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
     const relativeZ = vehicle.position[2] - playerZ;
-    const laneX = vehicle.laneIndex * PHYSICS.LANE_WIDTH_METERS;
+    const laneX = (vehicle.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad;
     posRef.current.laneX = laneX;
     posRef.current.relZ = relativeZ;
     posRef.current.headingAngle = Math.atan2(vehicle.heading[0], vehicle.heading[2]);

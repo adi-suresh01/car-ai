@@ -4,6 +4,9 @@ use crate::physics::spatial::check_player_collisions_spatial;
 use crate::physics::vehicle::{Vehicle, VehicleType};
 use crate::route::geometry::RoadSpline;
 
+/// Duration in seconds after the last manual input before mission control resumes.
+const MANUAL_OVERRIDE_TIMEOUT_S: f64 = 0.5;
+
 pub struct World {
     pub player: Vehicle,
     pub npcs: Vec<Vehicle>,
@@ -12,12 +15,15 @@ pub struct World {
     pub tick: u64,
     pub time_s: f64,
     pub road_spline: Option<RoadSpline>,
+    /// When set, indicates the simulation time at which the last manual player input
+    /// was received. Mission control will not override throttle/brake/steering while
+    /// the player is actively sending input.
+    pub manual_input_last_time: Option<f64>,
 }
 
 impl World {
     pub fn new() -> Self {
-        let mut player = Vehicle::new("player".to_string(), VehicleType::Sedan, 2);
-        player.speed_mps = 29.0;
+        let player = Vehicle::new("player".to_string(), VehicleType::Sedan, 2);
         Self {
             player,
             npcs: Vec::new(),
@@ -26,7 +32,30 @@ impl World {
             tick: 0,
             time_s: 0.0,
             road_spline: None,
+            manual_input_last_time: None,
         }
+    }
+
+    /// Returns true if the player is actively driving via keyboard/gamepad input,
+    /// meaning mission control should not override throttle/brake/steering.
+    pub fn is_manual_override_active(&self) -> bool {
+        match self.manual_input_last_time {
+            Some(t) => (self.time_s - t) < MANUAL_OVERRIDE_TIMEOUT_S,
+            None => false,
+        }
+    }
+
+    /// Called when a player_input WebSocket message is received.
+    /// Stores the raw normalized steering input (-1..1) on the vehicle so the
+    /// lane-keeping controller can distinguish manual steering from idle.
+    /// The actual steer_angle_deg is now computed by the lane-keep PD controller
+    /// each tick, blending manual intent with automatic centering.
+    pub fn set_manual_input(&mut self, steering: f64, throttle: f64, brake: f64) {
+        self.player.raw_steer_input = steering.clamp(-1.0, 1.0);
+        self.player.steer_angle_deg = (steering * MAX_STEER_DEG).clamp(-MAX_STEER_DEG, MAX_STEER_DEG);
+        self.player.throttle = throttle.clamp(0.0, 1.0);
+        self.player.brake = brake.clamp(0.0, 1.0);
+        self.manual_input_last_time = Some(self.time_s);
     }
 
     #[allow(dead_code)]
@@ -41,6 +70,10 @@ impl World {
 
     pub fn step(&mut self) {
         let dt = PHYSICS_DT;
+
+        if !self.is_manual_override_active() {
+            self.player.raw_steer_input = 0.0;
+        }
 
         self.apply_mission_control(dt);
 
@@ -63,7 +96,11 @@ impl World {
         self.time_s += dt;
     }
 
-    fn apply_mission_control(&mut self, dt: f64) {
+    fn apply_mission_control(&mut self, _dt: f64) {
+        if self.is_manual_override_active() {
+            return;
+        }
+
         match self.mission.mode {
             crate::mission::state::MissionMode::Hold => {
                 self.player.throttle = 0.0;
@@ -72,6 +109,7 @@ impl World {
                 } else {
                     self.player.brake = 0.0;
                 }
+                self.player.steering_target_lane = None;
             }
             crate::mission::state::MissionMode::Cruise => {
                 let target_mps = self.mission.cruise_target_speed_mph * MPH_TO_MPS;
@@ -88,7 +126,7 @@ impl World {
                     self.player.brake = 0.0;
                 }
 
-                self.steer_toward_lane(self.mission.target_lane_index, dt);
+                self.player.steering_target_lane = Some(self.mission.target_lane_index);
             }
             crate::mission::state::MissionMode::LaneChange => {
                 let target_mps = self.mission.cruise_target_speed_mph * MPH_TO_MPS;
@@ -104,7 +142,7 @@ impl World {
                     self.player.brake = 0.0;
                 }
 
-                self.steer_toward_lane(self.mission.target_lane_index, dt);
+                self.player.steering_target_lane = Some(self.mission.target_lane_index);
 
                 let target_x =
                     crate::physics::vehicle::lane_center(self.mission.target_lane_index);
@@ -125,7 +163,7 @@ impl World {
                     self.player.brake = 0.0;
                 }
 
-                self.steer_toward_lane(self.mission.target_lane_index, dt);
+                self.player.steering_target_lane = Some(self.mission.target_lane_index);
 
                 let target_x =
                     crate::physics::vehicle::lane_center(self.mission.target_lane_index);
@@ -140,17 +178,6 @@ impl World {
                 }
             }
         }
-    }
-
-    fn steer_toward_lane(&mut self, target_lane: usize, dt: f64) {
-        let target_x = crate::physics::vehicle::lane_center(target_lane);
-        let lateral_error = target_x - self.player.position_x;
-
-        let desired_steer = (lateral_error * 8.0).clamp(-MAX_STEER_DEG, MAX_STEER_DEG);
-
-        let steer_delta = desired_steer - self.player.steer_angle_deg;
-        let max_delta = STEER_RATE_DEG_PER_S * dt;
-        self.player.steer_angle_deg += steer_delta.clamp(-max_delta, max_delta);
     }
 
     pub fn timestamp_ms(&self) -> u64 {

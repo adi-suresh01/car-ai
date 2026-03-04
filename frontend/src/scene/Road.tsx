@@ -141,7 +141,10 @@ function RoadSurface({ samples, geometry }: RoadGeometryState) {
         roughnessMap={textures.roughness}
         roughness={0.85}
         metalness={0.05}
-        color={0x3a3a3a}
+        color={0x4a4a4a}
+        polygonOffset
+        polygonOffsetFactor={-2}
+        polygonOffsetUnits={-2}
       />
     </mesh>
   );
@@ -306,21 +309,25 @@ function RoadsideTrees({ samples, geometry }: RoadGeometryState) {
     <group ref={groupRef}>
       {treeData.map((tree, i) => (
         <group key={i} position={[tree.position.x, tree.position.y, tree.position.z]} scale={tree.scale}>
+          {/* Trunk */}
           <mesh position={[0, tree.trunkHeight / 2, 0]} castShadow>
-            <cylinderGeometry args={[0.15, 0.25, tree.trunkHeight, 6]} />
-            <meshStandardMaterial color={0x4a3520} roughness={0.9} />
+            <cylinderGeometry args={[0.12, 0.22, tree.trunkHeight, 6]} />
+            <meshStandardMaterial color={0x5a422a} roughness={0.92} />
           </mesh>
-          <mesh position={[0, tree.trunkHeight + 1.5, 0]} castShadow>
-            <coneGeometry args={[2.2, 4, 7]} />
-            <meshStandardMaterial color={0x1a4a1a} roughness={0.85} />
+          {/* Bottom foliage -- widest layer, positioned so base sits at trunk top */}
+          <mesh position={[0, tree.trunkHeight + 2.0, 0]} castShadow>
+            <coneGeometry args={[2.0, 4, 8]} />
+            <meshStandardMaterial color={0x1a5a1a} roughness={0.88} />
           </mesh>
-          <mesh position={[0, tree.trunkHeight + 3.0, 0]} castShadow>
-            <coneGeometry args={[1.6, 3, 7]} />
-            <meshStandardMaterial color={0x1d5a1d} roughness={0.85} />
+          {/* Middle foliage */}
+          <mesh position={[0, tree.trunkHeight + 4.0, 0]} castShadow>
+            <coneGeometry args={[1.5, 3.2, 8]} />
+            <meshStandardMaterial color={0x226622} roughness={0.88} />
           </mesh>
-          <mesh position={[0, tree.trunkHeight + 4.2, 0]} castShadow>
-            <coneGeometry args={[1.0, 2.2, 6]} />
-            <meshStandardMaterial color={0x206620} roughness={0.85} />
+          {/* Top foliage -- narrowest, tip of tree */}
+          <mesh position={[0, tree.trunkHeight + 5.6, 0]} castShadow>
+            <coneGeometry args={[0.9, 2.4, 7]} />
+            <meshStandardMaterial color={0x2a7a2a} roughness={0.85} />
           </mesh>
         </group>
       ))}
@@ -329,23 +336,23 @@ function RoadsideTrees({ samples, geometry }: RoadGeometryState) {
 }
 
 function TerrainPlane({ samples }: { samples: SplineSample[] }) {
-  const groupRef = useRef<THREE.Group>(null);
+  const meshRef = useRef<THREE.Mesh>(null);
 
   const groundTexture = useMemo(() => {
     const size = 256;
     const data = new Uint8Array(size * size * 4);
     for (let i = 0; i < size * size; i++) {
-      const noise = Math.random() * 15;
+      const noise = Math.random() * 18;
       const idx = i * 4;
-      data[idx] = 35 + noise;
-      data[idx + 1] = 55 + noise;
-      data[idx + 2] = 28 + noise;
+      data[idx] = 32 + noise;
+      data[idx + 1] = 50 + noise * 1.2;
+      data[idx + 2] = 24 + noise * 0.6;
       data[idx + 3] = 255;
     }
     const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(80, 80);
+    tex.repeat.set(120, 120);
     tex.needsUpdate = true;
     return tex;
   }, []);
@@ -355,35 +362,67 @@ function TerrainPlane({ samples }: { samples: SplineSample[] }) {
     const posS = store.playerPositionS;
     const interpSample = interpolateSampleAtS(samples, posS);
 
-    if (groupRef.current) {
-      groupRef.current.position.set(
+    if (meshRef.current) {
+      meshRef.current.position.set(
         -interpSample.position.x,
-        -0.05,
+        -0.2,
         -interpSample.position.z
       );
     }
   });
 
   const terrainGeom = useMemo(() => {
-    if (samples.length < 2) return new THREE.PlaneGeometry(1600, 1600);
+    if (samples.length < 2) {
+      const geom = new THREE.BufferGeometry();
+      const h = 1200;
+      const positions = new Float32Array([-h, 0, -h, h, 0, -h, h, 0, h, -h, 0, h]);
+      const normals = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
+      const uvs = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
+      const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+      geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+      geom.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+      geom.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+      geom.setIndex(new THREE.BufferAttribute(indices, 1));
+      return geom;
+    }
 
     const center = samples[Math.floor(samples.length / 2)].position;
-    const geom = new THREE.PlaneGeometry(2000, 2000, 1, 1);
-    geom.translate(center.x, center.z, 0);
+    const geom = new THREE.BufferGeometry();
+    const half = 1200;
+    const cx = center.x;
+    const cz = center.z;
+    const positions = new Float32Array([
+      cx - half, 0, cz - half,
+      cx + half, 0, cz - half,
+      cx + half, 0, cz + half,
+      cx - half, 0, cz + half,
+    ]);
+    const normals = new Float32Array([
+      0, 1, 0,
+      0, 1, 0,
+      0, 1, 0,
+      0, 1, 0,
+    ]);
+    const uvs = new Float32Array([
+      0, 0, 1, 0, 1, 1, 0, 1,
+    ]);
+    const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
+    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
+    geom.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
+    geom.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
+    geom.setIndex(new THREE.BufferAttribute(indices, 1));
     return geom;
   }, [samples]);
 
   return (
-    <group ref={groupRef}>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={terrainGeom} receiveShadow>
-        <meshStandardMaterial
-          map={groundTexture}
-          color={0x2d4a1a}
-          roughness={0.95}
-          metalness={0}
-        />
-      </mesh>
-    </group>
+    <mesh ref={meshRef} geometry={terrainGeom} receiveShadow>
+      <meshStandardMaterial
+        map={groundTexture}
+        color={0x2a4518}
+        roughness={0.97}
+        metalness={0}
+      />
+    </mesh>
   );
 }
 

@@ -6,7 +6,6 @@ use std::sync::Mutex;
 use tokio::sync::broadcast;
 
 use crate::api::types::WsClientMessage;
-use crate::config::MAX_STEER_DEG;
 use crate::physics::world::World;
 use crate::voice::intent::{intent_to_mission_update, parse_utterance};
 
@@ -71,9 +70,7 @@ fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) {
             brake,
         }) => {
             let mut w = world.lock().unwrap();
-            w.player.steer_angle_deg = steering.clamp(-MAX_STEER_DEG, MAX_STEER_DEG);
-            w.player.throttle = throttle.clamp(0.0, 1.0);
-            w.player.brake = brake.clamp(0.0, 1.0);
+            w.set_manual_input(steering, throttle, brake);
         }
         Ok(WsClientMessage::VoiceCommand { utterance }) => {
             let intent = parse_utterance(&utterance);

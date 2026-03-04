@@ -68,6 +68,7 @@ const KEY_RELEASE: Record<string, () => void> = {
 };
 
 let inputInterval: ReturnType<typeof setInterval> | null = null;
+let wasActive = false;
 
 function handleKeyDown(e: KeyboardEvent): void {
   const handler = KEY_BINDINGS[e.code];
@@ -88,7 +89,9 @@ function handleKeyUp(e: KeyboardEvent): void {
 function sendInput(): void {
   if (useSimulationStore.getState().autopilotEnabled) return;
 
-  if (state.steering !== 0 || state.throttle !== 0 || state.brake !== 0) {
+  const isActive = state.steering !== 0 || state.throttle !== 0 || state.brake !== 0;
+
+  if (isActive || wasActive) {
     simulationWs.send({
       type: "player_input",
       steering: state.steering,
@@ -96,6 +99,8 @@ function sendInput(): void {
       brake: state.brake,
     });
   }
+
+  wasActive = isActive;
 }
 
 export function getInputState(): Readonly<InputState> {

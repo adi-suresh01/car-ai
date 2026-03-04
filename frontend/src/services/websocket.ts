@@ -5,7 +5,17 @@ import type {
   ClientMessage,
 } from "../models/types";
 
-const WS_URL = import.meta.env.VITE_WS_URL || "ws://localhost:4000/ws/simulation";
+function resolveWsUrl(): string {
+  if (import.meta.env.VITE_WS_URL) {
+    return import.meta.env.VITE_WS_URL;
+  }
+  // Derive from current page location so Vite proxy handles the upgrade
+  // in dev and production deployments use their own host.
+  const proto = window.location.protocol === "https:" ? "wss:" : "ws:";
+  return `${proto}//${window.location.host}/ws/simulation`;
+}
+
+const WS_URL = resolveWsUrl();
 
 const RECONNECT_DELAY_MS = 2000;
 const MAX_RECONNECT_DELAY_MS = 16000;
@@ -21,10 +31,12 @@ class SimulationWebSocket {
     this.cleanup();
 
     try {
+      console.log(`[WS] Connecting to ${WS_URL}`);
       this.ws = new WebSocket(WS_URL);
       this.ws.binaryType = "arraybuffer";
 
       this.ws.onopen = () => {
+        console.log("[WS] Connected");
         this.reconnectAttempts = 0;
         useSimulationStore.getState().setConnected(true);
       };
@@ -33,12 +45,14 @@ class SimulationWebSocket {
         this.handleMessage(event.data as string);
       };
 
-      this.ws.onclose = () => {
+      this.ws.onclose = (event: CloseEvent) => {
+        console.log(`[WS] Closed: code=${event.code} reason=${event.reason}`);
         useSimulationStore.getState().setConnected(false);
         this.scheduleReconnect();
       };
 
       this.ws.onerror = () => {
+        console.warn("[WS] Connection error");
         useSimulationStore.getState().setConnected(false);
       };
     } catch {

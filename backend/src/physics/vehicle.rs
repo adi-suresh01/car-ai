@@ -3,6 +3,33 @@ use serde::{Deserialize, Serialize};
 use crate::config::*;
 use crate::route::geometry::RoadSpline;
 
+/// Lane-keeping PD controller gains for the straight-road physics path.
+/// Kp steers proportionally to lateral offset from lane center (deg per meter).
+/// Kd steers proportionally to heading error to damp oscillation (deg per radian).
+const LANE_KEEP_KP: f64 = 4.0;
+const LANE_KEEP_KD: f64 = 40.0;
+
+/// In Frenet (road-spline) mode, the lateral offset is in the road's local frame.
+/// Same PD structure but tuned for the spline coordinate system.
+const LANE_KEEP_FRENET_KP: f64 = 4.0;
+const LANE_KEEP_FRENET_KD: f64 = 40.0;
+
+/// When the driver is actively steering, we still apply a reduced heading-alignment
+/// correction to prevent the car from going perpendicular to the road.
+const HEADING_ASSIST_GAIN: f64 = 15.0;
+
+/// Steering input commands below this threshold are treated as "no manual steering,"
+/// allowing full lane-keep authority.
+const MANUAL_STEER_DEADZONE: f64 = 0.02;
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum LaneKeepMode {
+    /// Full automatic lane centering (no manual input).
+    FullAuto,
+    /// Manual steering is active; only apply heading alignment assist.
+    AssistOnly,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 #[serde(rename_all = "kebab-case")]
 pub enum VehicleType {
@@ -53,6 +80,14 @@ pub struct Vehicle {
     pub lateral_t: f64,
     pub road_heading: f64,
     pub curvature: f64,
+    /// Raw normalized steering input from the player (-1..1). Used to determine
+    /// whether manual steering is active for lane-keep blending.
+    pub raw_steer_input: f64,
+    /// The lane the lane-keeping controller should target. Set by mission control
+    /// when a lane change or overtake is in progress, otherwise defaults to current lane.
+    /// This unifies mission-control steering with vehicle-level lane-keeping into a
+    /// single PD controller.
+    pub steering_target_lane: Option<usize>,
 }
 
 impl Vehicle {
@@ -74,6 +109,8 @@ impl Vehicle {
             lateral_t: 0.0,
             road_heading: 0.0,
             curvature: 0.0,
+            raw_steer_input: 0.0,
+            steering_target_lane: None,
         }
     }
 
@@ -98,7 +135,38 @@ impl Vehicle {
         }
     }
 
+    fn effective_target_lane(&self) -> usize {
+        self.steering_target_lane.unwrap_or(self.lane_index)
+    }
+
+    /// Compute lane-keeping steering correction for the straight-road path.
+    /// In FullAuto mode, applies proportional correction on lateral error and
+    /// derivative correction on heading to smoothly center the car.
+    /// In AssistOnly mode, only applies heading alignment to prevent perpendicular drift.
+    fn lane_keep_steer_straight(&self, mode: LaneKeepMode, dt: f64) -> f64 {
+        let target_x = lane_center(self.effective_target_lane());
+        let lateral_error = target_x - self.position_x;
+        let heading_error = -self.heading_rad;
+
+        match mode {
+            LaneKeepMode::FullAuto => {
+                let desired = LANE_KEEP_KP * lateral_error + LANE_KEEP_KD * heading_error;
+                let max_delta = STEER_RATE_DEG_PER_S * dt;
+                let delta = (desired - self.steer_angle_deg).clamp(-max_delta, max_delta);
+                (self.steer_angle_deg + delta).clamp(-MAX_STEER_DEG, MAX_STEER_DEG)
+            }
+            LaneKeepMode::AssistOnly => {
+                let correction = HEADING_ASSIST_GAIN * heading_error;
+                let max_delta = STEER_RATE_DEG_PER_S * dt;
+                let delta = correction.clamp(-max_delta, max_delta);
+                (self.steer_angle_deg + delta).clamp(-MAX_STEER_DEG, MAX_STEER_DEG)
+            }
+        }
+    }
+
     pub fn step(&mut self, dt: f64) {
+        self.apply_lane_keeping(dt);
+
         let max_speed_mps = MAX_SPEED_MPH * MPH_TO_MPS;
 
         let accel = self.throttle * 6.0;
@@ -128,7 +196,64 @@ impl Vehicle {
         self.lane_index = closest_lane(self.position_x);
     }
 
+    /// Apply lane-keeping steering. Called at the beginning of each step
+    /// before the bicycle model integrates.
+    fn apply_lane_keeping(&mut self, dt: f64) {
+        if self.speed_mps < 0.5 {
+            return;
+        }
+
+        let mode = if self.raw_steer_input.abs() > MANUAL_STEER_DEADZONE {
+            LaneKeepMode::AssistOnly
+        } else {
+            LaneKeepMode::FullAuto
+        };
+
+        self.steer_angle_deg = self.lane_keep_steer_straight(mode, dt);
+    }
+
+    /// Compute lane-keeping steering for the Frenet (road-spline) path.
+    /// lateral_t is the vehicle's lateral position in road-local coordinates.
+    /// The target is the lane_offset for the current lane.
+    fn lane_keep_steer_frenet(&self, road: &RoadSpline, mode: LaneKeepMode, dt: f64) -> f64 {
+        let target_t = road.lane_offset(self.effective_target_lane());
+        let lateral_error = target_t - self.lateral_t;
+
+        match mode {
+            LaneKeepMode::FullAuto => {
+                let desired = LANE_KEEP_FRENET_KP * lateral_error
+                    + LANE_KEEP_FRENET_KD * (-self.steer_angle_deg.to_radians());
+                let max_delta = STEER_RATE_DEG_PER_S * dt;
+                let delta = (desired - self.steer_angle_deg).clamp(-max_delta, max_delta);
+                (self.steer_angle_deg + delta).clamp(-MAX_STEER_DEG, MAX_STEER_DEG)
+            }
+            LaneKeepMode::AssistOnly => {
+                let correction = HEADING_ASSIST_GAIN * (-self.steer_angle_deg.to_radians());
+                let max_delta = STEER_RATE_DEG_PER_S * dt;
+                let delta = correction.clamp(-max_delta, max_delta);
+                (self.steer_angle_deg + delta).clamp(-MAX_STEER_DEG, MAX_STEER_DEG)
+            }
+        }
+    }
+
+    /// Apply lane-keeping for the Frenet path. Called before integrating dynamics.
+    fn apply_lane_keeping_on_road(&mut self, road: &RoadSpline, dt: f64) {
+        if self.speed_mps < 0.5 {
+            return;
+        }
+
+        let mode = if self.raw_steer_input.abs() > MANUAL_STEER_DEADZONE {
+            LaneKeepMode::AssistOnly
+        } else {
+            LaneKeepMode::FullAuto
+        };
+
+        self.steer_angle_deg = self.lane_keep_steer_frenet(road, mode, dt);
+    }
+
     pub fn step_on_road(&mut self, road: &RoadSpline, dt: f64) {
+        self.apply_lane_keeping_on_road(road, dt);
+
         let max_speed_mps = MAX_SPEED_MPH * MPH_TO_MPS;
 
         let accel = self.throttle * 6.0;
@@ -251,6 +376,7 @@ mod tests {
         let mut v = make_vehicle(2);
         v.speed_mps = 20.0;
         v.steer_angle_deg = 10.0;
+        v.raw_steer_input = 0.5;
         let before = v.heading_rad;
         v.step(PHYSICS_DT);
         assert!(
@@ -279,5 +405,94 @@ mod tests {
             let g = v.gear();
             assert!((1..=6).contains(&g), "gear {g} out of range for speed {speed_mph} mph");
         }
+    }
+
+    #[test]
+    fn lane_keeping_centers_offset_vehicle() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = 20.0;
+        v.throttle = 0.05;
+        v.position_x = lane_center(2) + 1.0;
+        v.lateral_offset = 1.0;
+
+        for _ in 0..300 {
+            v.step(PHYSICS_DT);
+        }
+
+        let offset = (v.position_x - lane_center(v.lane_index)).abs();
+        assert!(
+            offset < 0.15,
+            "lane keeping should center the vehicle, offset={offset:.3}"
+        );
+    }
+
+    #[test]
+    fn lane_keeping_corrects_heading() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = 25.0;
+        v.throttle = 0.05;
+        v.heading_rad = 0.15;
+
+        for _ in 0..300 {
+            v.step(PHYSICS_DT);
+        }
+
+        assert!(
+            v.heading_rad.abs() < 0.05,
+            "lane keeping should align heading with road, heading={:.4}",
+            v.heading_rad
+        );
+    }
+
+    #[test]
+    fn lane_keeping_inactive_at_low_speed() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = 0.3;
+        v.steer_angle_deg = 5.0;
+        v.step(PHYSICS_DT);
+        assert!(
+            (v.steer_angle_deg - 5.0).abs() < 0.01,
+            "lane keeping should not adjust steering below speed threshold"
+        );
+    }
+
+    #[test]
+    fn manual_steer_prevents_full_lane_keep() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = 20.0;
+        v.throttle = 0.05;
+        v.raw_steer_input = 0.5;
+        v.steer_angle_deg = 0.5 * MAX_STEER_DEG;
+
+        let steer_before = v.steer_angle_deg;
+        v.step(PHYSICS_DT);
+
+        // In AssistOnly mode, the controller only applies heading correction,
+        // not full lateral centering. The steer should not jump to zero.
+        assert!(
+            v.steer_angle_deg.abs() > 1.0,
+            "manual steer should prevent full lane-keep override, steer={:.2} (was {:.2})",
+            v.steer_angle_deg,
+            steer_before
+        );
+    }
+
+    #[test]
+    fn steering_target_lane_overrides_current_lane() {
+        let mut v = make_vehicle(2);
+        v.speed_mps = 20.0;
+        v.throttle = 0.05;
+        v.steering_target_lane = Some(3);
+
+        for _ in 0..600 {
+            v.step(PHYSICS_DT);
+        }
+
+        let target_x = lane_center(3);
+        let offset = (v.position_x - target_x).abs();
+        assert!(
+            offset < 0.3,
+            "vehicle should steer toward target lane 3, offset={offset:.3} from lane center"
+        );
     }
 }

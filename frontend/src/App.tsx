@@ -213,8 +213,11 @@ export function App() {
           <MissionStatus />
         </div>
 
-        <div className="dashboard-sidebar">
+        <div className="dashboard-infotainment">
           <CarPlayDisplay />
+        </div>
+
+        <div className="dashboard-console-panel">
           <DashboardConsole />
           {showDebugPanel && <VoiceDebugPanel />}
         </div>

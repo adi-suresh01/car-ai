@@ -118,11 +118,11 @@ export function buildRoadMesh(
     const rightZ = sample.position.z - sample.normal.z * halfWidth;
 
     positions[base * 3] = leftX;
-    positions[base * 3 + 1] = 0;
+    positions[base * 3 + 1] = 0.05;
     positions[base * 3 + 2] = leftZ;
 
     positions[(base + 1) * 3] = rightX;
-    positions[(base + 1) * 3 + 1] = 0;
+    positions[(base + 1) * 3 + 1] = 0.05;
     positions[(base + 1) * 3 + 2] = rightZ;
 
     normals[base * 3] = 0;
@@ -217,10 +217,10 @@ function buildMarkingStrip(
 
     const base = i * 2;
     positions[base * 3] = leftX;
-    positions[base * 3 + 1] = 0.02;
+    positions[base * 3 + 1] = 0.07;
     positions[base * 3 + 2] = leftZ;
     positions[(base + 1) * 3] = rightX;
-    positions[(base + 1) * 3 + 1] = 0.02;
+    positions[(base + 1) * 3 + 1] = 0.03;
     positions[(base + 1) * 3 + 2] = rightZ;
 
     normals[base * 3 + 1] = 1;
