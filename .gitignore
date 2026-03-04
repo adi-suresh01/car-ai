@@ -3,19 +3,19 @@
 # ==========================
 
 # Rust
-apps/backend/target/
+backend/target/
 
 # Node / frontend
 node_modules/
 dist/
-apps/frontend/dist/
-apps/frontend/tsconfig.tsbuildinfo
+frontend/dist/
+frontend/tsconfig.tsbuildinfo
 
 # Python
 __pycache__/
 *.egg-info/
-apps/training/.mypy_cache/
-apps/training/.ruff_cache/
+training/.mypy_cache/
+training/.ruff_cache/
 
 # ==========================
 # AI / Claude generated
@@ -34,9 +34,9 @@ CLAUDE.md
 # Python virtual environments & training outputs
 # ==========================
 .venv/
-apps/training/.venv/
-apps/training/runs/
-apps/training/output/
+training/.venv/
+training/runs/
+training/output/
 
 # ==========================
 # Generated datasets / episodes

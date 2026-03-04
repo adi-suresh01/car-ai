@@ -38,10 +38,9 @@ The simulation runs a 60Hz physics loop on the backend with a bicycle dynamics m
 
 ```
 car-ai/
-  apps/
-    backend/       Rust simulation server (Actix-Web, port 4000)
-    frontend/      React + Three.js client (Vite, port 5173)
-    training/      Python RL training pipeline (PPO, ONNX export)
+  backend/       Rust simulation server (Actix-Web, port 4000)
+  frontend/      React + Three.js client (Vite, port 5173)
+  training/      Python RL training pipeline (PPO, ONNX export)
   data/
     scenarios/     Scenario configuration files
 ```
@@ -57,7 +56,7 @@ car-ai/
 ### Backend
 
 ```sh
-cd apps/backend
+cd backend
 cargo build
 cargo run
 ```
@@ -67,7 +66,7 @@ The server starts on `http://localhost:4000`.
 ### Frontend
 
 ```sh
-cd apps/frontend
+cd frontend
 npm install
 npm run dev
 ```
@@ -76,7 +75,7 @@ The dev server starts on `http://localhost:5173` and proxies `/api` and `/ws` re
 
 ## Environment Variables
 
-Create a `.env` file in the project root or in `apps/backend/`:
+Create a `.env` file in the project root or in `backend/`:
 
 ```
 PORT=4000

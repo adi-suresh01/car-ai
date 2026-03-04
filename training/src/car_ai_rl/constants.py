@@ -1,6 +1,6 @@
 """Physics constants shared with the Rust backend.
 
-These values MUST match apps/backend/src/config.rs exactly.
+These values MUST match backend/src/config.rs exactly.
 """
 
 LANE_WIDTH_METERS: float = 3.6

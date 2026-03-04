@@ -34,5 +34,5 @@ training:
   seed: 42
 
 export:
-  onnx_path: "../../apps/frontend/public/rl/ppo-highway.onnx"
+  onnx_path: "../frontend/public/rl/ppo-highway.onnx"
   opset_version: 17

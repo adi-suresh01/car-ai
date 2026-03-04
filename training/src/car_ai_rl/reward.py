@@ -1,6 +1,6 @@
 """Reward function mirroring the Rust implementation.
 
-Must match apps/backend/src/rl/reward.rs compute_reward() exactly.
+Must match backend/src/rl/reward.rs compute_reward() exactly.
 
 Components and weights:
   progress:          (position_z - prev_z) * 0.01          weight 1.0
