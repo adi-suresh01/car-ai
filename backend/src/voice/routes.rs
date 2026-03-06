@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 use crate::physics::world::World;
 use crate::voice::elevenlabs::ElevenLabsClient;
-use crate::voice::intent::{intent_to_mission_update, parse_utterance, MissionUpdate};
+use crate::voice::intent::{intent_to_mission_update, parse_utterance, MissionUpdate, VoiceIntent};
 
 /// Apply a parsed mission update to the world state.
 /// Shared between REST and WebSocket voice command handlers.
@@ -49,6 +49,13 @@ pub struct VoiceCommandRequest {
 }
 
 #[derive(Serialize)]
+pub struct VoiceCommandResponse {
+    pub intent: String,
+    pub acknowledged: bool,
+    pub message: String,
+}
+
+#[derive(Serialize)]
 pub struct TranscribeResponse {
     pub text: String,
 }
@@ -74,6 +81,20 @@ pub async fn handle_voice_health(
     }))
 }
 
+fn describe_intent(intent: &VoiceIntent) -> String {
+    match intent {
+        VoiceIntent::SetCruise { speed_mph } => format!("Setting cruise to {} mph", speed_mph),
+        VoiceIntent::SpeedUp { delta_mph } => format!("Speeding up by {} mph", delta_mph),
+        VoiceIntent::SlowDown { delta_mph } => format!("Slowing down by {} mph", delta_mph),
+        VoiceIntent::LaneChange { direction } => format!("Changing lane {:?}", direction),
+        VoiceIntent::Overtake => "Overtaking".to_string(),
+        VoiceIntent::Hold => "Holding position".to_string(),
+        VoiceIntent::Resume => "Resuming cruise".to_string(),
+        VoiceIntent::MaintainSpeed => "Locking current speed".to_string(),
+        VoiceIntent::Unknown(u) => format!("Unknown command: {}", u),
+    }
+}
+
 pub async fn handle_voice_command(
     body: web::Json<VoiceCommandRequest>,
     world: web::Data<Mutex<World>>,
@@ -84,14 +105,24 @@ pub async fn handle_voice_command(
 
     let mut world = world.lock().unwrap();
 
+    let intent_name = format!("{:?}", intent);
     if let Some(update) = intent_to_mission_update(&intent) {
         info!("Applying mission update: {:?}", update);
         apply_mission_update(&mut world, &update);
+        let message = describe_intent(&intent);
+        HttpResponse::Ok().json(VoiceCommandResponse {
+            intent: intent_name,
+            acknowledged: true,
+            message,
+        })
     } else {
         warn!("No mission update for intent: {:?}", intent);
+        HttpResponse::Ok().json(VoiceCommandResponse {
+            intent: intent_name,
+            acknowledged: false,
+            message: format!("I didn't understand: {}", body.utterance),
+        })
     }
-
-    HttpResponse::Ok().json(&world.mission)
 }
 
 pub async fn handle_transcribe(
