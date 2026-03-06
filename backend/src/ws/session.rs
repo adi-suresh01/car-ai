@@ -8,7 +8,7 @@ use tokio::sync::broadcast;
 use crate::api::types::WsClientMessage;
 use crate::physics::world::World;
 use crate::voice::intent::{intent_to_mission_update, parse_utterance};
-use crate::voice::routes::apply_mission_update;
+use crate::voice::routes::{apply_mission_update, describe_intent};
 
 pub async fn ws_handler(
     req: HttpRequest,
@@ -40,7 +40,9 @@ pub async fn ws_handler(
         while let Some(Ok(msg)) = msg_stream.next().await {
             match msg {
                 Message::Text(text) => {
-                    handle_client_message(&text, &world_clone);
+                    if let Some(response) = handle_client_message(&text, &world_clone) {
+                        let _ = session.text(bytestring::ByteString::from(response)).await;
+                    }
                 }
                 Message::Close(_) => {
                     info!("WebSocket client disconnected");
@@ -62,7 +64,7 @@ pub async fn ws_handler(
     Ok(resp)
 }
 
-fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) {
+fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) -> Option<String> {
     let parsed: Result<WsClientMessage, _> = serde_json::from_str(text);
     match parsed {
         Ok(WsClientMessage::PlayerInput {
@@ -72,18 +74,34 @@ fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) {
         }) => {
             let mut w = world.lock().unwrap();
             w.set_manual_input(steering, throttle, brake);
+            None
         }
         Ok(WsClientMessage::VoiceCommand { utterance }) => {
+            info!("WS voice command: {:?}", utterance);
             let intent = parse_utterance(&utterance);
+            let message = describe_intent(&intent);
             if let Some(update) = intent_to_mission_update(&intent) {
                 let mut w = world.lock().unwrap();
                 apply_mission_update(&mut w, &update);
+                Some(serde_json::json!({
+                    "type": "voice_response",
+                    "intent": format!("{:?}", intent),
+                    "acknowledged": true,
+                    "message": message,
+                }).to_string())
             } else {
                 warn!("Could not parse voice command: {}", utterance);
+                Some(serde_json::json!({
+                    "type": "voice_response",
+                    "intent": "Unknown",
+                    "acknowledged": false,
+                    "message": format!("I didn't understand: {}", utterance),
+                }).to_string())
             }
         }
         Err(e) => {
             error!("Failed to parse WebSocket message: {}", e);
+            None
         }
     }
 }

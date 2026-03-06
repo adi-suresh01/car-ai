@@ -81,7 +81,7 @@ pub async fn handle_voice_health(
     }))
 }
 
-fn describe_intent(intent: &VoiceIntent) -> String {
+pub fn describe_intent(intent: &VoiceIntent) -> String {
     match intent {
         VoiceIntent::SetCruise { speed_mph } => format!("Setting cruise to {} mph", speed_mph),
         VoiceIntent::SpeedUp { delta_mph } => format!("Speeding up by {} mph", delta_mph),
