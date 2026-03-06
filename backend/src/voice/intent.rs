@@ -77,9 +77,64 @@ pub fn parse_utterance(utterance: &str) -> VoiceIntent {
     VoiceIntent::Unknown(utterance.to_string())
 }
 
+fn word_to_number(word: &str) -> Option<f64> {
+    match word {
+        "zero" => Some(0.0),
+        "one" => Some(1.0),
+        "two" => Some(2.0),
+        "three" => Some(3.0),
+        "four" => Some(4.0),
+        "five" => Some(5.0),
+        "six" => Some(6.0),
+        "seven" => Some(7.0),
+        "eight" => Some(8.0),
+        "nine" => Some(9.0),
+        "ten" => Some(10.0),
+        "fifteen" => Some(15.0),
+        "twenty" => Some(20.0),
+        "twenty-five" | "twentyfive" => Some(25.0),
+        "thirty" => Some(30.0),
+        "thirty-five" | "thirtyfive" => Some(35.0),
+        "forty" => Some(40.0),
+        "forty-five" | "fortyfive" => Some(45.0),
+        "fifty" => Some(50.0),
+        "fifty-five" | "fiftyfive" => Some(55.0),
+        "sixty" => Some(60.0),
+        "sixty-five" | "sixtyfive" => Some(65.0),
+        "seventy" => Some(70.0),
+        "seventy-five" | "seventyfive" => Some(75.0),
+        "eighty" => Some(80.0),
+        "eighty-five" | "eightyfive" => Some(85.0),
+        "ninety" => Some(90.0),
+        "ninety-five" | "ninetyfive" => Some(95.0),
+        "hundred" => Some(100.0),
+        _ => None,
+    }
+}
+
 fn extract_number(tokens: &[&str]) -> Option<f64> {
+    // Try numeric parsing first
     for token in tokens {
         if let Ok(n) = token.parse::<f64>() {
+            if n > 0.0 && n <= 120.0 {
+                return Some(n);
+            }
+        }
+    }
+    // Try compound word numbers: "sixty five" → 65
+    for window in tokens.windows(2) {
+        if let (Some(tens), Some(ones)) = (word_to_number(window[0]), word_to_number(window[1])) {
+            if tens >= 20.0 && tens % 10.0 == 0.0 && ones >= 1.0 && ones <= 9.0 {
+                let combined = tens + ones;
+                if combined > 0.0 && combined <= 120.0 {
+                    return Some(combined);
+                }
+            }
+        }
+    }
+    // Try single word numbers
+    for token in tokens {
+        if let Some(n) = word_to_number(token) {
             if n > 0.0 && n <= 120.0 {
                 return Some(n);
             }
