@@ -5,7 +5,36 @@ use std::sync::Mutex;
 
 use crate::physics::world::World;
 use crate::voice::elevenlabs::ElevenLabsClient;
-use crate::voice::intent::{intent_to_mission_update, parse_utterance};
+use crate::voice::intent::{intent_to_mission_update, parse_utterance, MissionUpdate};
+
+/// Apply a parsed mission update to the world state.
+/// Shared between REST and WebSocket voice command handlers.
+pub fn apply_mission_update(world: &mut World, update: &MissionUpdate) {
+    match update.mode {
+        Some(crate::mission::state::MissionMode::Cruise) => {
+            if let Some(speed) = update.cruise_target_speed_mph {
+                world.mission.set_cruise(speed, update.source);
+            } else if let Some(delta) = update.speed_delta_mph {
+                let new_speed = (world.mission.cruise_target_speed_mph + delta).clamp(0.0, 120.0);
+                world.mission.set_cruise(new_speed, update.source);
+            }
+        }
+        Some(crate::mission::state::MissionMode::LaneChange) => {
+            if let Some(dir) = update.lane_change_direction {
+                let lane = world.player.lane_index;
+                world.mission.set_lane_change(dir, lane, update.source);
+            }
+        }
+        Some(crate::mission::state::MissionMode::Overtake) => {
+            let lane = world.player.lane_index;
+            world.mission.set_overtake(lane, update.source);
+        }
+        Some(crate::mission::state::MissionMode::Hold) => {
+            world.mission.set_hold(update.source);
+        }
+        None => {}
+    }
+}
 
 #[derive(Deserialize)]
 pub struct VoiceCommandRequest {
@@ -36,27 +65,7 @@ pub async fn handle_voice_command(
     let mut world = world.lock().unwrap();
 
     if let Some(update) = intent_to_mission_update(&intent) {
-        match update.mode {
-            Some(crate::mission::state::MissionMode::Cruise) => {
-                if let Some(speed) = update.cruise_target_speed_mph {
-                    world.mission.set_cruise(speed, update.source);
-                }
-            }
-            Some(crate::mission::state::MissionMode::LaneChange) => {
-                if let Some(dir) = update.lane_change_direction {
-                    let lane = world.player.lane_index;
-                    world.mission.set_lane_change(dir, lane, update.source);
-                }
-            }
-            Some(crate::mission::state::MissionMode::Overtake) => {
-                let lane = world.player.lane_index;
-                world.mission.set_overtake(lane, update.source);
-            }
-            Some(crate::mission::state::MissionMode::Hold) => {
-                world.mission.set_hold(update.source);
-            }
-            None => {}
-        }
+        apply_mission_update(&mut world, &update);
     }
 
     HttpResponse::Ok().json(&world.mission)
