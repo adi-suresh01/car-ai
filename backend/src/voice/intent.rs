@@ -10,6 +10,7 @@ pub enum VoiceIntent {
     LaneChange { direction: LaneChangeDirection },
     Overtake,
     Hold,
+    Resume,
     Unknown(String),
 }
 
@@ -63,6 +64,14 @@ pub fn parse_utterance(utterance: &str) -> VoiceIntent {
         || lower.contains("halt")
     {
         return VoiceIntent::Hold;
+    }
+
+    if lower.contains("resume")
+        || lower.contains("continue")
+        || lower.contains("go ahead")
+        || lower.contains("keep going")
+    {
+        return VoiceIntent::Resume;
     }
 
     VoiceIntent::Unknown(utterance.to_string())
@@ -138,6 +147,13 @@ pub fn intent_to_mission_update(intent: &VoiceIntent) -> Option<MissionUpdate> {
         }),
         VoiceIntent::Hold => Some(MissionUpdate {
             mode: Some(MissionMode::Hold),
+            cruise_target_speed_mph: None,
+            speed_delta_mph: None,
+            lane_change_direction: None,
+            source: MissionSource::Voice,
+        }),
+        VoiceIntent::Resume => Some(MissionUpdate {
+            mode: Some(MissionMode::Cruise),
             cruise_target_speed_mph: None,
             speed_delta_mph: None,
             lane_change_direction: None,
