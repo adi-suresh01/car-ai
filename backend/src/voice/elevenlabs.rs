@@ -149,31 +149,54 @@ impl ElevenLabsClient {
             self.voice_id
         );
 
-        let body = serde_json::json!({
+        let json_body = serde_json::json!({
             "text": text,
             "model_id": TTS_MODEL,
         });
 
-        let resp = self
-            .http
-            .post(&url)
-            .header("xi-api-key", &api_key)
-            .header("Accept", "audio/mpeg")
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| format!("ElevenLabs TTS request failed: {}", e))?;
+        let mut last_err = String::new();
+        for attempt in 0..MAX_RETRIES {
+            if attempt > 0 {
+                warn!("TTS retry attempt {}/{}", attempt + 1, MAX_RETRIES);
+                tokio::time::sleep(Duration::from_millis(500 * attempt as u64)).await;
+            }
 
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            return Err(format!("ElevenLabs TTS error {}: {}", status, body));
+            let resp = match self
+                .http
+                .post(&url)
+                .header("xi-api-key", &api_key)
+                .header("Accept", "audio/mpeg")
+                .json(&json_body)
+                .send()
+                .await
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    last_err = format!("ElevenLabs TTS request failed: {}", e);
+                    continue;
+                }
+            };
+
+            if resp.status().is_server_error() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                last_err = format!("ElevenLabs TTS error {}: {}", status, body);
+                continue;
+            }
+
+            if !resp.status().is_success() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                return Err(format!("ElevenLabs TTS error {}: {}", status, body));
+            }
+
+            return resp.bytes()
+                .await
+                .map(|b| b.to_vec())
+                .map_err(|e| format!("Failed to read TTS audio bytes: {}", e));
         }
 
-        resp.bytes()
-            .await
-            .map(|b| b.to_vec())
-            .map_err(|e| format!("Failed to read TTS audio bytes: {}", e))
+        Err(last_err)
     }
 
     fn require_api_key(&self) -> Option<String> {
