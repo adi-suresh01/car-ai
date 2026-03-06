@@ -201,6 +201,7 @@ pub enum WsClientMessage {
     VoiceCommand {
         utterance: String,
     },
+    Ping {},
 }
 
 #[allow(dead_code)]

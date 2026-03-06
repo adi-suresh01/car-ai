@@ -104,6 +104,15 @@ fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) -> Option<
                 }).to_string())
             }
         }
+        Ok(WsClientMessage::Ping {}) => {
+            Some(serde_json::json!({
+                "type": "pong",
+                "timestamp": std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .unwrap_or_default()
+                    .as_millis() as u64,
+            }).to_string())
+        }
         Err(e) => {
             error!("Failed to parse WebSocket message: {}", e);
             None
