@@ -33,7 +33,9 @@ pub fn parse_utterance(utterance: &str) -> VoiceIntent {
         return VoiceIntent::SlowDown { delta_mph: delta };
     }
 
-    if lower.contains("lane left") || lower.contains("move left") || lower.contains("go left") {
+    if lower.contains("lane left") || lower.contains("move left") || lower.contains("go left")
+        || lower.contains("merge left") || lower.contains("switch left") || lower.contains("change left")
+    {
         return VoiceIntent::LaneChange {
             direction: LaneChangeDirection::Left,
         };
@@ -42,6 +44,9 @@ pub fn parse_utterance(utterance: &str) -> VoiceIntent {
     if lower.contains("lane right")
         || lower.contains("move right")
         || lower.contains("go right")
+        || lower.contains("merge right")
+        || lower.contains("switch right")
+        || lower.contains("change right")
     {
         return VoiceIntent::LaneChange {
             direction: LaneChangeDirection::Right,
