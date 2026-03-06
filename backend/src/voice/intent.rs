@@ -165,17 +165,26 @@ fn extract_number(tokens: &[&str]) -> Option<f64> {
 }
 
 fn extract_cruise_speed(tokens: &[&str]) -> Option<f64> {
-    let has_cruise = tokens.iter().any(|t| {
-        *t == "cruise" || *t == "speed" || *t == "set"
-            || *t == "drive" || *t == "go"
-    });
+    // Strong triggers — always try to extract speed
+    let strong = tokens.iter().any(|t| *t == "cruise" || *t == "set");
+    // Weak triggers — only match if a number is also present
+    let weak = tokens.iter().any(|t| *t == "speed" || *t == "drive" || *t == "go");
 
-    if !has_cruise {
+    if !strong && !weak {
         return None;
     }
 
-    // Use the shared extract_number which handles word numbers too
-    extract_number(tokens)
+    let number = extract_number(tokens);
+
+    // Strong triggers always return the number (even None)
+    if strong {
+        return number;
+    }
+
+    // Weak triggers only match when a number is found
+    // (avoids "go left" matching as cruise)
+    number
+}
 }
 
 pub fn intent_to_mission_update(intent: &VoiceIntent) -> Option<MissionUpdate> {
