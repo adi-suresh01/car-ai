@@ -352,3 +352,143 @@ pub struct MissionUpdate {
     pub lane_change_direction: Option<LaneChangeDirection>,
     pub source: MissionSource,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_cruise_speed_numeric() {
+        match parse_utterance("cruise 65") {
+            VoiceIntent::SetCruise { speed_mph } => assert_eq!(speed_mph, 65.0),
+            other => panic!("Expected SetCruise, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_cruise_speed_word() {
+        match parse_utterance("set cruise sixty five") {
+            VoiceIntent::SetCruise { speed_mph } => assert_eq!(speed_mph, 65.0),
+            other => panic!("Expected SetCruise, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_speed_up() {
+        match parse_utterance("speed up") {
+            VoiceIntent::SpeedUp { delta_mph } => assert_eq!(delta_mph, 5.0),
+            other => panic!("Expected SpeedUp, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_speed_up_with_number() {
+        match parse_utterance("speed up 10") {
+            VoiceIntent::SpeedUp { delta_mph } => assert_eq!(delta_mph, 10.0),
+            other => panic!("Expected SpeedUp, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_slow_down() {
+        match parse_utterance("slow down") {
+            VoiceIntent::SlowDown { .. } => {}
+            other => panic!("Expected SlowDown, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_lane_left_variants() {
+        for phrase in &["lane left", "go left", "merge left", "left lane", "switch left"] {
+            match parse_utterance(phrase) {
+                VoiceIntent::LaneChange { direction: LaneChangeDirection::Left } => {}
+                other => panic!("Expected LaneChange Left for '{}', got {:?}", phrase, other),
+            }
+        }
+    }
+
+    #[test]
+    fn test_lane_right_variants() {
+        for phrase in &["lane right", "move right", "right lane", "change right"] {
+            match parse_utterance(phrase) {
+                VoiceIntent::LaneChange { direction: LaneChangeDirection::Right } => {}
+                other => panic!("Expected LaneChange Right for '{}', got {:?}", phrase, other),
+            }
+        }
+    }
+
+    #[test]
+    fn test_overtake() {
+        match parse_utterance("overtake") {
+            VoiceIntent::Overtake => {}
+            other => panic!("Expected Overtake, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_hold_variants() {
+        for phrase in &["stop", "brake", "hold", "cancel", "nevermind"] {
+            match parse_utterance(phrase) {
+                VoiceIntent::Hold => {}
+                other => panic!("Expected Hold for '{}', got {:?}", phrase, other),
+            }
+        }
+    }
+
+    #[test]
+    fn test_resume() {
+        match parse_utterance("resume driving") {
+            VoiceIntent::Resume => {}
+            other => panic!("Expected Resume, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_maintain_speed() {
+        match parse_utterance("maintain speed") {
+            VoiceIntent::MaintainSpeed => {}
+            other => panic!("Expected MaintainSpeed, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_pull_over() {
+        match parse_utterance("pull over") {
+            VoiceIntent::PullOver => {}
+            other => panic!("Expected PullOver, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_speed_limit() {
+        match parse_utterance("match the speed limit") {
+            VoiceIntent::MatchSpeedLimit => {}
+            other => panic!("Expected MatchSpeedLimit, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_unknown() {
+        match parse_utterance("play some music") {
+            VoiceIntent::Unknown(_) => {}
+            other => panic!("Expected Unknown, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_punctuation_stripping() {
+        match parse_utterance("Cruise, 65!") {
+            VoiceIntent::SetCruise { speed_mph } => assert_eq!(speed_mph, 65.0),
+            other => panic!("Expected SetCruise, got {:?}", other),
+        }
+    }
+
+    #[test]
+    fn test_confidence_scores() {
+        let intent = parse_utterance("cruise 65");
+        assert!(intent_confidence(&intent, "cruise 65") > 0.5);
+
+        let unknown = parse_utterance("blah blah blah");
+        assert!(intent_confidence(&unknown, "blah blah blah") < 0.3);
+    }
+}
