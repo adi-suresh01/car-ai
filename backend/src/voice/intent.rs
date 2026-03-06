@@ -210,6 +210,61 @@ fn extract_cruise_speed(tokens: &[&str]) -> Option<f64> {
 }
 }
 
+/// Returns a confidence score (0.0-1.0) for the parsed intent.
+/// Higher means more keywords matched the pattern.
+pub fn intent_confidence(intent: &VoiceIntent, utterance: &str) -> f64 {
+    let lower = normalize_utterance(utterance);
+    let word_count = lower.split_whitespace().count().max(1) as f64;
+
+    match intent {
+        VoiceIntent::SetCruise { .. } => {
+            let mut score = 0.3; // base for having a number
+            if lower.contains("cruise") { score += 0.4; }
+            if lower.contains("set") { score += 0.2; }
+            if lower.contains("mph") || lower.contains("miles") { score += 0.1; }
+            score.min(1.0)
+        }
+        VoiceIntent::SpeedUp { .. } => {
+            if lower.contains("speed up") || lower.contains("accelerate") { 0.9 }
+            else if lower.contains("faster") { 0.8 }
+            else { 0.6 }
+        }
+        VoiceIntent::SlowDown { .. } => {
+            if lower.contains("slow down") || lower.contains("decelerate") { 0.9 }
+            else if lower.contains("slower") { 0.8 }
+            else { 0.6 }
+        }
+        VoiceIntent::LaneChange { .. } => {
+            if lower.contains("lane") { 0.95 }
+            else if lower.contains("merge") || lower.contains("switch") { 0.85 }
+            else { 0.7 }
+        }
+        VoiceIntent::Overtake => {
+            if lower.contains("overtake") { 0.95 }
+            else if lower.contains("pass") { 0.7 }
+            else { 0.5 }
+        }
+        VoiceIntent::Hold => {
+            if lower.contains("stop") || lower.contains("brake") { 0.9 }
+            else if lower.contains("hold") || lower.contains("halt") { 0.85 }
+            else if lower.contains("cancel") { 0.8 }
+            else { 0.6 }
+        }
+        VoiceIntent::Resume => 0.85,
+        VoiceIntent::MaintainSpeed => 0.9,
+        VoiceIntent::MatchSpeedLimit => 0.9,
+        VoiceIntent::PullOver => {
+            if lower.contains("pull over") { 0.95 }
+            else if lower.contains("emergency") { 0.9 }
+            else { 0.7 }
+        }
+        VoiceIntent::Unknown(_) => {
+            // Lower confidence for shorter unknown utterances
+            (1.0 / word_count).min(0.3)
+        }
+    }
+}
+
 pub fn intent_to_mission_update(intent: &VoiceIntent) -> Option<MissionUpdate> {
     match intent {
         VoiceIntent::SetCruise { speed_mph } => Some(MissionUpdate {
