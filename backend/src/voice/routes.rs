@@ -13,7 +13,13 @@ pub fn apply_mission_update(world: &mut World, update: &MissionUpdate) {
     match update.mode {
         Some(crate::mission::state::MissionMode::Cruise) => {
             if let Some(speed) = update.cruise_target_speed_mph {
-                world.mission.set_cruise(speed, update.source);
+                if speed == 0.0 {
+                    // "maintain speed" — lock cruise to current speed
+                    let current = world.player.speed_mph();
+                    world.mission.set_cruise(current, update.source);
+                } else {
+                    world.mission.set_cruise(speed, update.source);
+                }
             } else if let Some(delta) = update.speed_delta_mph {
                 let new_speed = (world.mission.cruise_target_speed_mph + delta).clamp(0.0, 120.0);
                 world.mission.set_cruise(new_speed, update.source);
