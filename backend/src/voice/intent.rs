@@ -162,23 +162,17 @@ fn extract_number(tokens: &[&str]) -> Option<f64> {
 }
 
 fn extract_cruise_speed(tokens: &[&str]) -> Option<f64> {
-    let has_cruise = tokens
-        .iter()
-        .any(|t| *t == "cruise" || *t == "speed" || *t == "set");
+    let has_cruise = tokens.iter().any(|t| {
+        *t == "cruise" || *t == "speed" || *t == "set"
+            || *t == "drive" || *t == "go"
+    });
 
     if !has_cruise {
         return None;
     }
 
-    for token in tokens {
-        if let Ok(speed) = token.parse::<f64>() {
-            if (1.0..=120.0).contains(&speed) {
-                return Some(speed);
-            }
-        }
-    }
-
-    None
+    // Use the shared extract_number which handles word numbers too
+    extract_number(tokens)
 }
 
 pub fn intent_to_mission_update(intent: &VoiceIntent) -> Option<MissionUpdate> {
