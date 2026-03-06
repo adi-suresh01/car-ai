@@ -172,6 +172,10 @@ async fn main() -> std::io::Result<()> {
                 web::post().to(voice::routes::handle_synthesize),
             )
             .route(
+                "/api/voice/transcribe-and-execute",
+                web::post().to(voice::routes::handle_transcribe_and_execute),
+            )
+            .route(
                 "/ws/simulation",
                 web::get().to(ws::session::ws_handler),
             )

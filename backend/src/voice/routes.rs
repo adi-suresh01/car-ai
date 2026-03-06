@@ -173,6 +173,51 @@ pub async fn handle_transcribe(
     }
 }
 
+/// Combined endpoint: transcribe audio → parse intent → execute command.
+/// Saves the frontend from making two separate API calls.
+pub async fn handle_transcribe_and_execute(
+    body: web::Bytes,
+    elevenlabs: web::Data<ElevenLabsClient>,
+    world: web::Data<Mutex<World>>,
+) -> HttpResponse {
+    if !elevenlabs.has_api_key() {
+        return HttpResponse::ServiceUnavailable()
+            .json(serde_json::json!({ "error": "ElevenLabs API key not configured" }));
+    }
+    if body.is_empty() {
+        return HttpResponse::BadRequest()
+            .json(serde_json::json!({ "error": "Empty audio data" }));
+    }
+
+    let text = match elevenlabs.transcribe(&body).await {
+        Ok(t) => t,
+        Err(e) => {
+            warn!("Transcription failed: {}", e);
+            return HttpResponse::InternalServerError().json(serde_json::json!({ "error": e }));
+        }
+    };
+
+    info!("Transcribed: {:?}", text);
+    let intent = parse_utterance(&text);
+    let intent_name = format!("{:?}", intent);
+    let message = describe_intent(&intent);
+
+    let mut world = world.lock().unwrap();
+    let acknowledged = if let Some(update) = intent_to_mission_update(&intent) {
+        apply_mission_update(&mut world, &update);
+        true
+    } else {
+        false
+    };
+
+    HttpResponse::Ok().json(serde_json::json!({
+        "text": text,
+        "intent": intent_name,
+        "acknowledged": acknowledged,
+        "message": message,
+    }))
+}
+
 pub async fn handle_synthesize(
     body: web::Json<SynthesizeRequest>,
     elevenlabs: web::Data<ElevenLabsClient>,
