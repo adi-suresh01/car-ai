@@ -6,7 +6,7 @@ use std::sync::Mutex;
 
 use crate::physics::world::World;
 use crate::voice::elevenlabs::ElevenLabsClient;
-use crate::voice::intent::{intent_to_mission_update, parse_utterance, MissionUpdate, VoiceIntent};
+use crate::voice::intent::{intent_confidence, intent_to_mission_update, parse_utterance, MissionUpdate, VoiceIntent};
 
 /// Apply a parsed mission update to the world state.
 /// Shared between REST and WebSocket voice command handlers.
@@ -58,6 +58,7 @@ pub struct VoiceCommandResponse {
     pub intent: String,
     pub acknowledged: bool,
     pub message: String,
+    pub confidence: f64,
 }
 
 #[derive(Serialize)]
@@ -118,14 +119,16 @@ pub async fn handle_voice_command(
     let mut world = world.lock().unwrap();
 
     let intent_name = format!("{:?}", intent);
+    let confidence = intent_confidence(&intent, utterance);
     if let Some(update) = intent_to_mission_update(&intent) {
-        info!("Applying mission update: {:?}", update);
+        info!("Applying mission update: {:?} (confidence: {:.2})", update, confidence);
         apply_mission_update(&mut world, &update);
         let message = describe_intent(&intent);
         HttpResponse::Ok().json(VoiceCommandResponse {
             intent: intent_name,
             acknowledged: true,
             message,
+            confidence,
         })
     } else {
         warn!("No mission update for intent: {:?}", intent);
@@ -133,6 +136,7 @@ pub async fn handle_voice_command(
             intent: intent_name,
             acknowledged: false,
             message: format!("I didn't understand: {}", body.utterance),
+            confidence,
         })
     }
 }

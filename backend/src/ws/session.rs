@@ -7,7 +7,7 @@ use tokio::sync::broadcast;
 
 use crate::api::types::WsClientMessage;
 use crate::physics::world::World;
-use crate::voice::intent::{intent_to_mission_update, parse_utterance};
+use crate::voice::intent::{intent_confidence, intent_to_mission_update, parse_utterance};
 use crate::voice::routes::{apply_mission_update, describe_intent};
 
 pub async fn ws_handler(
@@ -85,6 +85,7 @@ fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) -> Option<
             info!("WS voice command: {:?}", utterance);
             let intent = parse_utterance(&utterance);
             let message = describe_intent(&intent);
+            let confidence = intent_confidence(&intent, &utterance);
             if let Some(update) = intent_to_mission_update(&intent) {
                 let mut w = world.lock().unwrap();
                 apply_mission_update(&mut w, &update);
@@ -93,6 +94,7 @@ fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) -> Option<
                     "intent": format!("{:?}", intent),
                     "acknowledged": true,
                     "message": message,
+                    "confidence": confidence,
                 }).to_string())
             } else {
                 warn!("Could not parse voice command: {}", utterance);
@@ -101,6 +103,7 @@ fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) -> Option<
                     "intent": "Unknown",
                     "acknowledged": false,
                     "message": format!("I didn't understand: {}", utterance),
+                    "confidence": confidence,
                 }).to_string())
             }
         }
