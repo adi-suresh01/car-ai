@@ -12,6 +12,7 @@ pub enum VoiceIntent {
     Hold,
     Resume,
     MaintainSpeed,
+    PullOver,
     Unknown(String),
 }
 
@@ -65,6 +66,14 @@ pub fn parse_utterance(utterance: &str) -> VoiceIntent {
         || lower.contains("halt")
     {
         return VoiceIntent::Hold;
+    }
+
+    if lower.contains("pull over")
+        || lower.contains("pull off")
+        || lower.contains("move to shoulder")
+        || lower.contains("emergency stop")
+    {
+        return VoiceIntent::PullOver;
     }
 
     if lower.contains("maintain speed")
@@ -221,6 +230,13 @@ pub fn intent_to_mission_update(intent: &VoiceIntent) -> Option<MissionUpdate> {
             cruise_target_speed_mph: None,
             speed_delta_mph: None,
             lane_change_direction: None,
+            source: MissionSource::Voice,
+        }),
+        VoiceIntent::PullOver => Some(MissionUpdate {
+            mode: Some(MissionMode::LaneChange),
+            cruise_target_speed_mph: None,
+            speed_delta_mph: None,
+            lane_change_direction: Some(LaneChangeDirection::Right),
             source: MissionSource::Voice,
         }),
         VoiceIntent::MaintainSpeed => Some(MissionUpdate {

@@ -90,6 +90,7 @@ pub fn describe_intent(intent: &VoiceIntent) -> String {
         VoiceIntent::Overtake => "Overtaking".to_string(),
         VoiceIntent::Hold => "Holding position".to_string(),
         VoiceIntent::Resume => "Resuming cruise".to_string(),
+        VoiceIntent::PullOver => "Pulling over to the right".to_string(),
         VoiceIntent::MaintainSpeed => "Locking current speed".to_string(),
         VoiceIntent::Unknown(u) => format!("Unknown command: {}", u),
     }
