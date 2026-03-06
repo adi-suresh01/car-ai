@@ -7,6 +7,7 @@ const TTS_MODEL: &str = "eleven_multilingual_v2";
 const DEFAULT_VOICE_ID: &str = "21m00Tcm4TlvDq8ikWAM";
 const HTTP_TIMEOUT_SECS: u64 = 30;
 const HTTP_CONNECT_TIMEOUT_SECS: u64 = 10;
+const MAX_RETRIES: usize = 3;
 
 /// Wraps raw PCM16-LE mono samples in a minimal WAV container.
 /// The frontend sends 16kHz 16-bit signed LE PCM; ElevenLabs expects
@@ -79,39 +80,62 @@ impl ElevenLabsClient {
         // ElevenLabs requires a playable audio file, so wrap in a WAV container.
         let wav_data = pcm_to_wav(audio_data, 16000, 1, 16);
 
-        let audio_part = reqwest::multipart::Part::bytes(wav_data)
-            .file_name("audio.wav")
-            .mime_str("audio/wav")
-            .map_err(|e| format!("Failed to create multipart part: {}", e))?;
+        let mut last_err = String::new();
+        for attempt in 0..MAX_RETRIES {
+            if attempt > 0 {
+                warn!("STT retry attempt {}/{}", attempt + 1, MAX_RETRIES);
+                tokio::time::sleep(Duration::from_millis(500 * attempt as u64)).await;
+            }
 
-        let form = reqwest::multipart::Form::new()
-            .text("model_id", STT_MODEL)
-            .part("file", audio_part);
+            let audio_part = reqwest::multipart::Part::bytes(wav_data.clone())
+                .file_name("audio.wav")
+                .mime_str("audio/wav")
+                .map_err(|e| format!("Failed to create multipart part: {}", e))?;
 
-        let resp = self
-            .http
-            .post(STT_URL)
-            .header("xi-api-key", &api_key)
-            .multipart(form)
-            .send()
-            .await
-            .map_err(|e| format!("ElevenLabs STT request failed: {}", e))?;
+            let form = reqwest::multipart::Form::new()
+                .text("model_id", STT_MODEL)
+                .part("file", audio_part);
 
-        if !resp.status().is_success() {
-            let status = resp.status();
-            let body = resp.text().await.unwrap_or_default();
-            return Err(format!("ElevenLabs STT error {}: {}", status, body));
+            let resp = match self
+                .http
+                .post(STT_URL)
+                .header("xi-api-key", &api_key)
+                .multipart(form)
+                .send()
+                .await
+            {
+                Ok(r) => r,
+                Err(e) => {
+                    last_err = format!("ElevenLabs STT request failed: {}", e);
+                    continue;
+                }
+            };
+
+            if resp.status().is_server_error() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                last_err = format!("ElevenLabs STT error {}: {}", status, body);
+                continue;
+            }
+
+            if !resp.status().is_success() {
+                let status = resp.status();
+                let body = resp.text().await.unwrap_or_default();
+                return Err(format!("ElevenLabs STT error {}: {}", status, body));
+            }
+
+            let json: serde_json::Value = resp
+                .json()
+                .await
+                .map_err(|e| format!("Failed to parse STT response: {}", e))?;
+
+            return json.get("text")
+                .and_then(|v| v.as_str())
+                .map(|s| s.to_string())
+                .ok_or_else(|| format!("No 'text' field in STT response: {}", json));
         }
 
-        let json: serde_json::Value = resp
-            .json()
-            .await
-            .map_err(|e| format!("Failed to parse STT response: {}", e))?;
-
-        json.get("text")
-            .and_then(|v| v.as_str())
-            .map(|s| s.to_string())
-            .ok_or_else(|| format!("No 'text' field in STT response: {}", json))
+        Err(last_err)
     }
 
     pub async fn synthesize(&self, text: &str) -> Result<Vec<u8>, String> {
