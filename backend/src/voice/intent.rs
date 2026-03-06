@@ -55,7 +55,11 @@ pub fn parse_utterance(utterance: &str) -> VoiceIntent {
         };
     }
 
-    if lower.contains("overtake") || lower.contains("pass") {
+    if lower.contains("overtake") || lower.contains("pass them")
+        || lower.contains("pass the") || lower.contains("pass this")
+        || lower.contains("pass car") || lower.contains("pass truck")
+        || (lower.contains("pass") && !lower.contains("passenger"))
+    {
         return VoiceIntent::Overtake;
     }
 
