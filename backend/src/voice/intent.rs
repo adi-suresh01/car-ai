@@ -67,6 +67,10 @@ pub fn parse_utterance(utterance: &str) -> VoiceIntent {
         || lower.contains("stop")
         || lower.contains("brake")
         || lower.contains("halt")
+        || lower.contains("cancel")
+        || lower.contains("abort")
+        || lower.contains("nevermind")
+        || lower.contains("never mind")
     {
         return VoiceIntent::Hold;
     }
