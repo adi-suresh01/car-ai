@@ -39,6 +39,8 @@ fn pcm_to_wav(pcm_data: &[u8], sample_rate: u32, channels: u16, bits_per_sample:
 pub struct ElevenLabsClient {
     api_key: Option<String>,
     voice_id: String,
+    tts_model: String,
+    stt_model: String,
     http: reqwest::Client,
 }
 
@@ -46,6 +48,10 @@ impl ElevenLabsClient {
     pub fn new(api_key: Option<String>) -> Self {
         let voice_id = std::env::var("XI_VOICE_ID")
             .unwrap_or_else(|_| DEFAULT_VOICE_ID.to_string());
+        let tts_model = std::env::var("XI_TTS_MODEL")
+            .unwrap_or_else(|_| TTS_MODEL.to_string());
+        let stt_model = std::env::var("XI_STT_MODEL")
+            .unwrap_or_else(|_| STT_MODEL.to_string());
 
         if api_key.as_ref().is_none_or(|k| k.is_empty()) {
             warn!("XI_API_KEY is not set; ElevenLabs STT/TTS endpoints will return 503");
@@ -59,9 +65,13 @@ impl ElevenLabsClient {
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
 
+        info!("ElevenLabs config: voice_id={}, tts_model={}, stt_model={}", voice_id, tts_model, stt_model);
+
         Self {
             api_key,
             voice_id,
+            tts_model,
+            stt_model,
             http,
         }
     }
@@ -93,7 +103,7 @@ impl ElevenLabsClient {
                 .map_err(|e| format!("Failed to create multipart part: {}", e))?;
 
             let form = reqwest::multipart::Form::new()
-                .text("model_id", STT_MODEL)
+                .text("model_id", self.stt_model.clone())
                 .part("file", audio_part);
 
             let resp = match self
@@ -151,7 +161,7 @@ impl ElevenLabsClient {
 
         let json_body = serde_json::json!({
             "text": text,
-            "model_id": TTS_MODEL,
+            "model_id": self.tts_model,
         });
 
         let mut last_err = String::new();
