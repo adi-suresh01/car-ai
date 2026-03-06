@@ -63,6 +63,17 @@ pub struct SynthesizeRequest {
     pub text: String,
 }
 
+pub async fn handle_voice_health(
+    elevenlabs: web::Data<ElevenLabsClient>,
+) -> HttpResponse {
+    let has_key = elevenlabs.has_api_key();
+    HttpResponse::Ok().json(serde_json::json!({
+        "status": if has_key { "ready" } else { "no_api_key" },
+        "stt_available": has_key,
+        "tts_available": has_key,
+    }))
+}
+
 pub async fn handle_voice_command(
     body: web::Json<VoiceCommandRequest>,
     world: web::Data<Mutex<World>>,

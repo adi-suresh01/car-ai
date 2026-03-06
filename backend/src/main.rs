@@ -156,6 +156,10 @@ async fn main() -> std::io::Result<()> {
                 web::get().to(api::route::get_route_directions),
             )
             .route(
+                "/api/voice/health",
+                web::get().to(voice::routes::handle_voice_health),
+            )
+            .route(
                 "/api/voice/transcribe",
                 web::post().to(voice::routes::handle_transcribe),
             )
