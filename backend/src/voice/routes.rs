@@ -1,5 +1,6 @@
 use actix_web::{web, HttpResponse};
 use base64::Engine;
+use log::{debug, info, warn};
 use serde::{Deserialize, Serialize};
 use std::sync::Mutex;
 
@@ -66,12 +67,17 @@ pub async fn handle_voice_command(
     body: web::Json<VoiceCommandRequest>,
     world: web::Data<Mutex<World>>,
 ) -> HttpResponse {
+    info!("Voice command received: {:?}", body.utterance);
     let intent = parse_utterance(&body.utterance);
+    debug!("Parsed voice intent: {:?}", intent);
 
     let mut world = world.lock().unwrap();
 
     if let Some(update) = intent_to_mission_update(&intent) {
+        info!("Applying mission update: {:?}", update);
         apply_mission_update(&mut world, &update);
+    } else {
+        warn!("No mission update for intent: {:?}", intent);
     }
 
     HttpResponse::Ok().json(&world.mission)
@@ -85,9 +91,16 @@ pub async fn handle_transcribe(
         return HttpResponse::ServiceUnavailable()
             .json(serde_json::json!({ "error": "ElevenLabs API key not configured" }));
     }
+    info!("Transcribe request: {} bytes of audio", body.len());
     match elevenlabs.transcribe(&body).await {
-        Ok(text) => HttpResponse::Ok().json(TranscribeResponse { text }),
-        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({ "error": e })),
+        Ok(text) => {
+            info!("Transcription result: {:?}", text);
+            HttpResponse::Ok().json(TranscribeResponse { text })
+        }
+        Err(e) => {
+            warn!("Transcription failed: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({ "error": e }))
+        }
     }
 }
 
@@ -99,11 +112,16 @@ pub async fn handle_synthesize(
         return HttpResponse::ServiceUnavailable()
             .json(serde_json::json!({ "error": "ElevenLabs API key not configured" }));
     }
+    info!("Synthesize request: {:?}", body.text);
     match elevenlabs.synthesize(&body.text).await {
         Ok(audio_bytes) => {
+            info!("Synthesis complete: {} bytes", audio_bytes.len());
             let encoded = base64::engine::general_purpose::STANDARD.encode(&audio_bytes);
             HttpResponse::Ok().json(SynthesizeResponse { audio: encoded })
         }
-        Err(e) => HttpResponse::InternalServerError().json(serde_json::json!({ "error": e })),
+        Err(e) => {
+            warn!("Synthesis failed: {}", e);
+            HttpResponse::InternalServerError().json(serde_json::json!({ "error": e }))
+        }
     }
 }
