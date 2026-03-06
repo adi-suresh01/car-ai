@@ -1,9 +1,12 @@
 use log::{info, warn};
+use std::time::Duration;
 
 const STT_URL: &str = "https://api.elevenlabs.io/v1/speech-to-text";
 const STT_MODEL: &str = "scribe_v1";
 const TTS_MODEL: &str = "eleven_multilingual_v2";
 const DEFAULT_VOICE_ID: &str = "21m00Tcm4TlvDq8ikWAM";
+const HTTP_TIMEOUT_SECS: u64 = 30;
+const HTTP_CONNECT_TIMEOUT_SECS: u64 = 10;
 
 /// Wraps raw PCM16-LE mono samples in a minimal WAV container.
 /// The frontend sends 16kHz 16-bit signed LE PCM; ElevenLabs expects
@@ -49,10 +52,16 @@ impl ElevenLabsClient {
             info!("ElevenLabs client initialized with API key");
         }
 
+        let http = reqwest::Client::builder()
+            .timeout(Duration::from_secs(HTTP_TIMEOUT_SECS))
+            .connect_timeout(Duration::from_secs(HTTP_CONNECT_TIMEOUT_SECS))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+
         Self {
             api_key,
             voice_id,
-            http: reqwest::Client::new(),
+            http,
         }
     }
 
