@@ -77,6 +77,11 @@ fn handle_client_message(text: &str, world: &web::Data<Mutex<World>>) -> Option<
             None
         }
         Ok(WsClientMessage::VoiceCommand { utterance }) => {
+            let utterance = utterance.trim().to_string();
+            if utterance.is_empty() {
+                warn!("Empty WS voice command received");
+                return None;
+            }
             info!("WS voice command: {:?}", utterance);
             let intent = parse_utterance(&utterance);
             let message = describe_intent(&intent);
