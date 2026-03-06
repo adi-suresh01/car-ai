@@ -100,8 +100,13 @@ pub async fn handle_voice_command(
     body: web::Json<VoiceCommandRequest>,
     world: web::Data<Mutex<World>>,
 ) -> HttpResponse {
-    info!("Voice command received: {:?}", body.utterance);
-    let intent = parse_utterance(&body.utterance);
+    let utterance = body.utterance.trim();
+    if utterance.is_empty() {
+        return HttpResponse::BadRequest()
+            .json(serde_json::json!({ "error": "Empty utterance" }));
+    }
+    info!("Voice command received: {:?}", utterance);
+    let intent = parse_utterance(utterance);
     debug!("Parsed voice intent: {:?}", intent);
 
     let mut world = world.lock().unwrap();
