@@ -55,8 +55,14 @@ impl ElevenLabsClient {
 
         if api_key.as_ref().is_none_or(|k| k.is_empty()) {
             warn!("XI_API_KEY is not set; ElevenLabs STT/TTS endpoints will return 503");
-        } else {
-            info!("ElevenLabs client initialized with API key");
+        } else if let Some(ref key) = api_key {
+            if key.len() < 20 {
+                warn!("XI_API_KEY looks too short ({} chars) — may be invalid", key.len());
+            } else if key.contains(' ') {
+                warn!("XI_API_KEY contains spaces — may be malformed");
+            } else {
+                info!("ElevenLabs client initialized (key: {}...)", &key[..8]);
+            }
         }
 
         let http = reqwest::Client::builder()
