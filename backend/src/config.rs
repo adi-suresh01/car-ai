@@ -18,6 +18,17 @@ pub const NPC_SPAWN_DISTANCE: f64 = -320.0;
 
 pub const NUM_LANES: usize = 5;
 
+/// Speed limit per lane (fast lane on left to slow lane on right).
+pub fn lane_speed_limit(lane_index: usize) -> f64 {
+    match lane_index {
+        0 => 75.0,
+        1 => 70.0,
+        2 => 65.0,
+        3 => 60.0,
+        _ => 55.0,
+    }
+}
+
 #[allow(dead_code)]
 pub struct ServerConfig {
     pub port: u16,

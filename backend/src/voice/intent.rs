@@ -12,6 +12,7 @@ pub enum VoiceIntent {
     Hold,
     Resume,
     MaintainSpeed,
+    MatchSpeedLimit,
     PullOver,
     Unknown(String),
 }
@@ -81,6 +82,12 @@ pub fn parse_utterance(utterance: &str) -> VoiceIntent {
         || lower.contains("emergency stop")
     {
         return VoiceIntent::PullOver;
+    }
+
+    if lower.contains("speed limit") || lower.contains("match limit")
+        || lower.contains("legal speed") || lower.contains("posted speed")
+    {
+        return VoiceIntent::MatchSpeedLimit;
     }
 
     if lower.contains("maintain speed")
@@ -252,6 +259,13 @@ pub fn intent_to_mission_update(intent: &VoiceIntent) -> Option<MissionUpdate> {
         VoiceIntent::MaintainSpeed => Some(MissionUpdate {
             mode: Some(MissionMode::Cruise),
             cruise_target_speed_mph: Some(0.0), // 0 signals "use current speed"
+            speed_delta_mph: None,
+            lane_change_direction: None,
+            source: MissionSource::Voice,
+        }),
+        VoiceIntent::MatchSpeedLimit => Some(MissionUpdate {
+            mode: Some(MissionMode::Cruise),
+            cruise_target_speed_mph: Some(-1.0), // -1 signals "use lane speed limit"
             speed_delta_mph: None,
             lane_change_direction: None,
             source: MissionSource::Voice,

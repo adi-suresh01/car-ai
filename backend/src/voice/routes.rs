@@ -18,6 +18,11 @@ pub fn apply_mission_update(world: &mut World, update: &MissionUpdate) {
                     // "maintain speed" — lock cruise to current speed
                     let current = world.player.speed_mph();
                     world.mission.set_cruise(current, update.source);
+                } else if speed < 0.0 {
+                    // "speed limit" — use lane speed limit
+                    let lane = world.player.lane_index;
+                    let limit = crate::config::lane_speed_limit(lane);
+                    world.mission.set_cruise(limit, update.source);
                 } else {
                     world.mission.set_cruise(speed, update.source);
                 }
@@ -92,6 +97,7 @@ pub fn describe_intent(intent: &VoiceIntent) -> String {
         VoiceIntent::Resume => "Resuming cruise".to_string(),
         VoiceIntent::PullOver => "Pulling over to the right".to_string(),
         VoiceIntent::MaintainSpeed => "Locking current speed".to_string(),
+        VoiceIntent::MatchSpeedLimit => "Matching lane speed limit".to_string(),
         VoiceIntent::Unknown(u) => format!("Unknown command: {}", u),
     }
 }
