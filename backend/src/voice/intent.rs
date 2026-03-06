@@ -17,8 +17,20 @@ pub enum VoiceIntent {
     Unknown(String),
 }
 
+/// Normalize STT output: lowercase, strip punctuation, collapse whitespace.
+fn normalize_utterance(utterance: &str) -> String {
+    utterance
+        .to_lowercase()
+        .chars()
+        .map(|c| if c.is_alphanumeric() || c == ' ' || c == '-' { c } else { ' ' })
+        .collect::<String>()
+        .split_whitespace()
+        .collect::<Vec<&str>>()
+        .join(" ")
+}
+
 pub fn parse_utterance(utterance: &str) -> VoiceIntent {
-    let lower = utterance.to_lowercase();
+    let lower = normalize_utterance(utterance);
     let tokens: Vec<&str> = lower.split_whitespace().collect();
 
     if let Some(speed) = extract_cruise_speed(&tokens) {
