@@ -103,6 +103,21 @@ pub async fn handle_transcribe(
             .json(serde_json::json!({ "error": "ElevenLabs API key not configured" }));
     }
     info!("Transcribe request: {} bytes of audio", body.len());
+    if body.is_empty() {
+        warn!("Empty audio data received for transcription");
+        return HttpResponse::BadRequest()
+            .json(serde_json::json!({ "error": "Empty audio data" }));
+    }
+    if body.len() < 100 {
+        warn!("Audio data too short: {} bytes", body.len());
+        return HttpResponse::BadRequest()
+            .json(serde_json::json!({ "error": "Audio data too short" }));
+    }
+    if body.len() > 25 * 1024 * 1024 {
+        warn!("Audio data too large: {} bytes", body.len());
+        return HttpResponse::BadRequest()
+            .json(serde_json::json!({ "error": "Audio data exceeds 25MB limit" }));
+    }
     match elevenlabs.transcribe(&body).await {
         Ok(text) => {
             info!("Transcription result: {:?}", text);
