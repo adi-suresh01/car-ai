@@ -183,6 +183,11 @@ export function App() {
       if (e.key === "n" || e.key === "N") {
         store.setShowScenarioSelector(true);
       }
+      if (e.key === "k" && (e.ctrlKey || e.metaKey)) {
+        e.preventDefault();
+        const input = document.querySelector<HTMLInputElement>(".console-text-input");
+        if (input) input.focus();
+      }
     },
     [toggleDebugPanel, toggleHelpOverlay]
   );
