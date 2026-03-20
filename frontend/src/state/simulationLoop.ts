@@ -228,6 +228,26 @@ function clientSidePrediction(dt: number): void {
     },
   });
 
+  // Complete lane change when we've reached the target lane
+  if (mission.mode === "lane_change" && newLaneIndex === mission.targetLaneIndex && Math.abs(newOffset) < 0.3) {
+    useSimulationStore.setState({
+      mission: { ...mission, mode: "cruise", laneChangeDirection: null },
+    });
+  }
+
+  // Complete overtake: return to original lane after reaching target
+  if (mission.mode === "overtake" && newLaneIndex === mission.targetLaneIndex && Math.abs(newOffset) < 0.3) {
+    if (mission.returnLaneIndex != null) {
+      useSimulationStore.setState({
+        mission: { ...mission, mode: "lane_change", targetLaneIndex: mission.returnLaneIndex, returnLaneIndex: null },
+      });
+    } else {
+      useSimulationStore.setState({
+        mission: { ...mission, mode: "cruise", laneChangeDirection: null },
+      });
+    }
+  }
+
   store.updateNavProgress(clampedS, newOffset);
 }
 
