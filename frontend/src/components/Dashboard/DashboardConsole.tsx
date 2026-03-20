@@ -1,6 +1,7 @@
 import { useState, useRef } from "react";
 import { useSimulationStore } from "../../state/simulationStore";
 import { simulationWs } from "../../services/websocket";
+import { sendVoiceCommand } from "../../services/api";
 import { parseAndApplyVoiceCommand } from "../../controllers/voiceParser";
 
 export function DashboardConsole() {
@@ -13,10 +14,15 @@ export function DashboardConsole() {
     const text = cmdInput.trim();
     if (!text) return;
 
-    // Send via WS to backend
+    // Send via WS to backend for real-time processing
     simulationWs.sendVoiceCommand(text);
 
-    // Also parse locally for immediate response
+    // Also send via REST API as fallback
+    sendVoiceCommand(text).catch(() => {
+      // Backend unavailable, local parsing handles it
+    });
+
+    // Parse locally for immediate response (works offline too)
     parseAndApplyVoiceCommand(text);
 
     useSimulationStore.getState().addVoiceCommand({
