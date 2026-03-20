@@ -1,6 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { useSimulationStore } from "../../state/simulationStore";
 import { simulationWs } from "../../services/websocket";
+import { parseAndApplyVoiceCommand } from "../../controllers/voiceParser";
 
 const VAD_THRESHOLD = 0.015;
 const VAD_SILENCE_MS = 1200;
