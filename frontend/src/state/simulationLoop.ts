@@ -94,12 +94,51 @@ function clientSidePrediction(dt: number): void {
 
   const player = store.player;
   const input = getInputState();
+  const mission = store.mission;
+
+  // Determine throttle/brake from either manual input or mission control
+  let effectiveThrottle = input.throttle;
+  let effectiveBrake = input.brake;
+  const hasManualInput = input.throttle > 0 || input.brake > 0 || input.steering !== 0;
+
+  if (!hasManualInput) {
+    if (mission.mode === "cruise") {
+      const targetMps = mission.cruiseTargetSpeedMph * MPH_TO_MPS;
+      const speedError = targetMps - player.speedMps;
+      if (speedError > 1.0) {
+        effectiveThrottle = Math.min(1.0, speedError * 0.3);
+        effectiveBrake = 0;
+      } else if (speedError < -1.0) {
+        effectiveThrottle = 0;
+        effectiveBrake = Math.min(1.0, Math.abs(speedError) * 0.2);
+      } else {
+        effectiveThrottle = 0.05;
+        effectiveBrake = 0;
+      }
+    } else if (mission.mode === "hold") {
+      effectiveThrottle = 0;
+      effectiveBrake = player.speedMps > 0.1 ? 0.3 : 0;
+    } else if (mission.mode === "lane_change" || mission.mode === "overtake") {
+      const targetMps = mission.cruiseTargetSpeedMph * MPH_TO_MPS;
+      const speedError = targetMps - player.speedMps;
+      if (speedError > 0.5) {
+        effectiveThrottle = Math.min(1.0, speedError * 0.3);
+        effectiveBrake = 0;
+      } else if (speedError < -0.5) {
+        effectiveThrottle = 0;
+        effectiveBrake = Math.min(1.0, Math.abs(speedError) * 0.2);
+      } else {
+        effectiveThrottle = 0.05;
+        effectiveBrake = 0;
+      }
+    }
+  }
 
   const drag = PHYSICS.AERO_DRAG_COEFF * player.speedMps * player.speedMps;
   const rolling = player.speedMps > 0 ? PHYSICS.ROLLING_RESIST_MPS2 : 0;
 
-  const throttleAccel = input.throttle * 6.0;
-  const brakeDecel = input.brake * PHYSICS.BRAKE_RATE_MPH_PER_S * MPH_TO_MPS;
+  const throttleAccel = effectiveThrottle * 6.0;
+  const brakeDecel = effectiveBrake * PHYSICS.BRAKE_RATE_MPH_PER_S * MPH_TO_MPS;
 
   const netAccel = throttleAccel - brakeDecel - drag - rolling;
   const maxSpeedMps = PHYSICS.MAX_SPEED_MPH * MPH_TO_MPS;
