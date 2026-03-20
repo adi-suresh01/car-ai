@@ -1,4 +1,5 @@
 import { useSimulationStore } from "../../state/simulationStore";
+import { useThrottledSelector } from "../../hooks/useThrottledStore";
 import type { MissionMode } from "../../models/types";
 
 const MODE_DISPLAY: Record<MissionMode, { label: string; color: string }> = {
