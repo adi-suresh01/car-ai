@@ -160,6 +160,9 @@ export function App() {
 
   const handleKeyboardShortcuts = useCallback(
     (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
       const store = useSimulationStore.getState();
 
       if (store.showScenarioSelector || store.showHelpOverlay) return;

@@ -46,7 +46,14 @@ const KEY_RELEASE: Record<string, () => void> = {
 let inputInterval: ReturnType<typeof setInterval> | null = null;
 let wasActive = false;
 
+function isTyping(e: KeyboardEvent): boolean {
+  const tag = (e.target as HTMLElement)?.tagName;
+  return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
+}
+
 function handleKeyDown(e: KeyboardEvent): void {
+  if (isTyping(e)) return;
+
   const handler = KEY_BINDINGS[e.code];
   if (handler) {
     e.preventDefault();
@@ -55,6 +62,8 @@ function handleKeyDown(e: KeyboardEvent): void {
 }
 
 function handleKeyUp(e: KeyboardEvent): void {
+  if (isTyping(e)) return;
+
   const handler = KEY_RELEASE[e.code];
   if (handler) {
     e.preventDefault();
