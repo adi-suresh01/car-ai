@@ -82,6 +82,16 @@ function sendInput(): void {
 
   const isActive = state.steering !== 0 || state.throttle !== 0 || state.brake !== 0;
 
+  // Cancel cruise/auto modes when manual input is detected
+  if (isActive && !wasActive) {
+    const store = useSimulationStore.getState();
+    if (store.mission.mode !== "hold" && (state.throttle > 0 || state.brake > 0)) {
+      useSimulationStore.setState({
+        mission: { ...store.mission, mode: "hold", source: "manual", updatedAt: Date.now() },
+      });
+    }
+  }
+
   if (isActive || wasActive) {
     simulationWs.send({
       type: "player_input",
