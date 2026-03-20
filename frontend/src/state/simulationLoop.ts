@@ -22,21 +22,24 @@ function initMockNpcs(): void {
   if (store.vehicles.length > 0) return;
 
   const playerZ = store.player.positionZ;
+  const laneCount = store.routeGeometry?.laneCount ?? 4;
+  const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
   const npcs: InterpolatedVehicle[] = MOCK_NPC_TYPES.map((type, i) => {
     const speedMph = MOCK_NPC_SPEEDS_MPH[i];
     const speedMps = speedMph * MPH_TO_MPS;
     const worldZ = playerZ + 40 + i * 70;
+    const laneX = (MOCK_NPC_LANES[i] + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad;
     return {
       id: `mock-npc-${i}`,
       type,
       laneIndex: MOCK_NPC_LANES[i],
       speedMph,
       speedMps,
-      position: [0, 0, worldZ] as [number, number, number],
+      position: [laneX, 0, worldZ] as [number, number, number],
       heading: [0, 0, 1] as [number, number, number],
       behavior: MOCK_NPC_BEHAVIORS[i],
-      prevPosition: [0, 0, worldZ] as [number, number, number],
-      targetPosition: [0, 0, worldZ] as [number, number, number],
+      prevPosition: [laneX, 0, worldZ] as [number, number, number],
+      targetPosition: [laneX, 0, worldZ] as [number, number, number],
       interpolationT: 0,
     };
   });
@@ -59,9 +62,13 @@ function updateMockNpcs(dt: number): void {
 
   const playerZ = store.player.positionZ;
 
+  const laneCount = store.routeGeometry?.laneCount ?? 4;
+  const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
+
   const updatedVehicles = store.vehicles.map((v) => {
     const newZ = v.position[2] + v.speedMps * elapsed;
     const distAhead = newZ - playerZ;
+    const laneX = (v.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad;
 
     let respawnedZ = newZ;
     if (distAhead > 500) {
@@ -72,9 +79,9 @@ function updateMockNpcs(dt: number): void {
 
     return {
       ...v,
-      position: [v.position[0], 0, respawnedZ] as [number, number, number],
+      position: [laneX, 0, respawnedZ] as [number, number, number],
       prevPosition: v.position,
-      targetPosition: [v.position[0], 0, respawnedZ] as [number, number, number],
+      targetPosition: [laneX, 0, respawnedZ] as [number, number, number],
     };
   });
 
