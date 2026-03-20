@@ -1,7 +1,34 @@
+import { useState, useRef } from "react";
 import { useSimulationStore } from "../../state/simulationStore";
+import { simulationWs } from "../../services/websocket";
+import { parseAndApplyVoiceCommand } from "../../controllers/voiceParser";
 
 export function DashboardConsole() {
   const voiceHistory = useSimulationStore((s) => s.voiceHistory);
+  const [cmdInput, setCmdInput] = useState("");
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  function handleSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    const text = cmdInput.trim();
+    if (!text) return;
+
+    // Send via WS to backend
+    simulationWs.sendVoiceCommand(text);
+
+    // Also parse locally for immediate response
+    parseAndApplyVoiceCommand(text);
+
+    useSimulationStore.getState().addVoiceCommand({
+      id: `cmd-${Date.now()}`,
+      utterance: text,
+      interpretedAs: text,
+      timestamp: Date.now(),
+      success: true,
+    });
+
+    setCmdInput("");
+  }
 
   return (
     <div className="dashboard-console">
@@ -9,10 +36,23 @@ export function DashboardConsole() {
         <span className="console-title">Voice Commands</span>
         <span className="console-count">{voiceHistory.length}</span>
       </div>
+      <form className="console-input-bar" onSubmit={handleSubmit}>
+        <input
+          ref={inputRef}
+          type="text"
+          className="console-text-input"
+          placeholder='Type command... ("cruise 65")'
+          value={cmdInput}
+          onChange={(e) => setCmdInput(e.target.value)}
+        />
+        <button type="submit" className="console-send-btn" disabled={!cmdInput.trim()}>
+          Go
+        </button>
+      </form>
       <div className="console-list">
         {voiceHistory.length === 0 ? (
           <div className="console-empty">
-            No voice commands yet. Say "cruise 65" to begin.
+            Say or type "cruise 65" to begin.
           </div>
         ) : (
           voiceHistory.map((entry) => (
