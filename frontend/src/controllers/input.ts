@@ -44,6 +44,9 @@ const KEY_RELEASE: Record<string, () => void> = {
   ArrowDown: () => {
     state.brake = 0;
   },
+  Space: () => {
+    state.brake = 0;
+  },
 };
 
 let inputInterval: ReturnType<typeof setInterval> | null = null;
