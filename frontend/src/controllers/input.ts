@@ -63,7 +63,7 @@ function isOverlayOpen(): boolean {
 }
 
 function handleKeyDown(e: KeyboardEvent): void {
-  if (isTyping(e)) return;
+  if (isTyping(e) || isOverlayOpen()) return;
 
   const handler = KEY_BINDINGS[e.code];
   if (handler) {
@@ -73,7 +73,7 @@ function handleKeyDown(e: KeyboardEvent): void {
 }
 
 function handleKeyUp(e: KeyboardEvent): void {
-  if (isTyping(e)) return;
+  if (isTyping(e) || isOverlayOpen()) return;
 
   const handler = KEY_RELEASE[e.code];
   if (handler) {
