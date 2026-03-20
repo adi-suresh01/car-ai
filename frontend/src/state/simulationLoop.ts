@@ -188,7 +188,9 @@ function clientSidePrediction(dt: number): void {
   }
   newSteer = Math.max(-PHYSICS.MAX_STEER_DEG, Math.min(PHYSICS.MAX_STEER_DEG, newSteer));
 
-  const lateralSpeed = (newSteer / PHYSICS.MAX_STEER_DEG) * predictedSpeed * 0.15;
+  // Reduce steering effect at high speed for stability
+  const speedFactor = 1.0 - (predictedSpeed / maxSpeedMps) * 0.6;
+  const lateralSpeed = (newSteer / PHYSICS.MAX_STEER_DEG) * predictedSpeed * 0.15 * speedFactor;
   const newLateralOffset = player.lateralOffset + lateralSpeed * dt;
 
   const laneCount = store.routeGeometry?.laneCount ?? 4;
