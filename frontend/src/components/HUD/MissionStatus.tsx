@@ -19,7 +19,7 @@ export function MissionStatus() {
       </div>
       {mission.mode === "cruise" && (
         <div className="mission-detail">
-          <span className="mission-target">{mission.cruiseTargetSpeedMph}</span>
+          <span className="mission-target">{Math.round(mission.cruiseTargetSpeedMph)}</span>
           <span className="mission-unit">MPH target</span>
         </div>
       )}
