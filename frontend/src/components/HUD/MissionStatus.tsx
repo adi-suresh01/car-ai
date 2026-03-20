@@ -32,8 +32,13 @@ export function MissionStatus() {
         <div className="mission-detail">
           <span className="mission-direction">
             {mission.laneChangeDirection === "left" ? "<<<" : ">>>"} Lane{" "}
-            {mission.targetLaneIndex}
+            {mission.targetLaneIndex + 1}
           </span>
+        </div>
+      )}
+      {mission.source === "voice" && (
+        <div className="mission-detail">
+          <span className="mission-unit" style={{ color: "#88bbff" }}>via voice</span>
         </div>
       )}
     </div>
