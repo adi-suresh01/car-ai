@@ -474,6 +474,51 @@
   border-radius: 10px;
 }
 
+.console-input-bar {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 6px;
+}
+
+.console-text-input {
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 6px;
+  padding: 5px 8px;
+  font-size: 11px;
+  color: #fff;
+  font-family: var(--font-sans);
+  outline: none;
+  transition: border-color 0.15s;
+}
+
+.console-text-input:focus {
+  border-color: var(--hud-accent);
+}
+
+.console-text-input::placeholder {
+  color: rgba(255, 255, 255, 0.2);
+}
+
+.console-send-btn {
+  background: var(--hud-accent);
+  border: none;
+  border-radius: 6px;
+  padding: 5px 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #fff;
+  cursor: pointer;
+  font-family: var(--font-sans);
+  transition: opacity 0.15s;
+}
+
+.console-send-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
 .console-list {
   display: flex;
   flex-direction: column;
