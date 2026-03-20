@@ -144,7 +144,7 @@ function clientSidePrediction(dt: number): void {
   const drag = PHYSICS.AERO_DRAG_COEFF * player.speedMps * player.speedMps;
   const rolling = player.speedMps > 0 ? PHYSICS.ROLLING_RESIST_MPS2 : 0;
 
-  const throttleAccel = effectiveThrottle * 6.0;
+  const throttleAccel = effectiveThrottle * 10.0;
   const brakeDecel = effectiveBrake * PHYSICS.BRAKE_RATE_MPH_PER_S * MPH_TO_MPS;
 
   const netAccel = throttleAccel - brakeDecel - drag - rolling;
