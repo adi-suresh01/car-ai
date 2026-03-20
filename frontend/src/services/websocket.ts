@@ -86,6 +86,10 @@ class SimulationWebSocket {
     }
   }
 
+  sendVoiceCommand(utterance: string): void {
+    this.send({ type: "voice_command", utterance });
+  }
+
   private scheduleReconnect(): void {
     if (this.disposed) return;
     const delay = Math.min(
