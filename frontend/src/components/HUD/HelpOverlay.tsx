@@ -10,10 +10,11 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
   {
     title: "Driving",
     shortcuts: [
-      { keys: ["W", "/", "Up"], description: "Throttle / Accelerate" },
-      { keys: ["S", "/", "Down"], description: "Brake / Decelerate" },
-      { keys: ["A", "/", "Left"], description: "Steer left" },
-      { keys: ["D", "/", "Right"], description: "Steer right" },
+      { keys: ["Up"], description: "Throttle / Accelerate" },
+      { keys: ["Down"], description: "Brake / Decelerate" },
+      { keys: ["Left"], description: "Steer left" },
+      { keys: ["Right"], description: "Steer right" },
+      { keys: ["Space"], description: "Brake (alternative)" },
     ],
   },
   {

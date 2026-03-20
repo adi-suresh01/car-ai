@@ -26,6 +26,9 @@ const KEY_BINDINGS: Record<string, () => void> = {
   ArrowDown: () => {
     state.brake = 1;
   },
+  Space: () => {
+    state.brake = 1;
+  },
 };
 
 const KEY_RELEASE: Record<string, () => void> = {
