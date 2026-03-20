@@ -43,7 +43,7 @@ function ConnectionStatus() {
   return (
     <div className="connection-indicator">
       <div className={`connection-dot ${connected ? "connected" : "disconnected"}`} />
-      <span>{connected ? "Live" : "Connecting..."}</span>
+      <span>{connected ? "Live" : "Offline (local physics)"}</span>
     </div>
   );
 }
