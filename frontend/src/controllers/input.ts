@@ -57,6 +57,11 @@ function isTyping(e: KeyboardEvent): boolean {
   return tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT";
 }
 
+function isOverlayOpen(): boolean {
+  const store = useSimulationStore.getState();
+  return store.showHelpOverlay || store.showScenarioSelector;
+}
+
 function handleKeyDown(e: KeyboardEvent): void {
   if (isTyping(e)) return;
 
