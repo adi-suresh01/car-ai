@@ -152,11 +152,27 @@ function clientSidePrediction(dt: number): void {
   const totalLength = store.routeGeometry?.totalLength ?? 4000;
   const clampedS = Math.min(predictedS, totalLength - 10);
 
-  const steerInput = input.steering;
+  // Steering: manual input or auto lane-change/lane-keeping
+  let steerInput = input.steering;
+
+  if (!hasManualInput && (mission.mode === "lane_change" || mission.mode === "overtake")) {
+    // Auto-steer toward target lane
+    const laneCount = store.routeGeometry?.laneCount ?? 4;
+    const halfRoad = (laneCount * PHYSICS.LANE_WIDTH_METERS) / 2;
+    const currentX = (player.laneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad + player.lateralOffset;
+    const targetX = (mission.targetLaneIndex + 0.5) * PHYSICS.LANE_WIDTH_METERS - halfRoad;
+    const lateralError = targetX - currentX;
+    steerInput = Math.max(-1, Math.min(1, lateralError * 0.8));
+  } else if (!hasManualInput && mission.mode === "cruise") {
+    // Auto lane-keep: steer toward lane center
+    const offsetError = -player.lateralOffset;
+    steerInput = Math.max(-1, Math.min(1, offsetError * 0.5));
+  }
+
   const steerRate = PHYSICS.STEER_RATE_DEG_PER_S * dt;
   let newSteer = player.steerAngleDeg + steerInput * steerRate;
   if (steerInput === 0) {
-    const returnRate = PHYSICS.STEER_RATE_DEG_PER_S * 0.5 * dt;
+    const returnRate = PHYSICS.STEER_RATE_DEG_PER_S * 0.8 * dt;
     if (Math.abs(newSteer) < returnRate) {
       newSteer = 0;
     } else {
