@@ -95,7 +95,7 @@ export function getInputState(): Readonly<InputState> {
 export function startInputListeners(): void {
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
-  inputInterval = setInterval(sendInput, 50);
+  inputInterval = setInterval(sendInput, 16);
 }
 
 export function stopInputListeners(): void {

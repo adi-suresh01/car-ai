@@ -47,6 +47,9 @@ export function VoiceListener() {
           const utterance = data.text.trim();
           simulationWs.send({ type: "voice_command", utterance });
 
+          // Also apply locally as fallback for offline/fast response
+          parseAndApplyVoiceCommand(utterance);
+
           useSimulationStore.getState().addVoiceCommand({
             id: `vc-${Date.now()}`,
             utterance,
