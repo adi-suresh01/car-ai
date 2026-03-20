@@ -88,6 +88,10 @@ let interpolationAlpha = 0;
 
 function clientSidePrediction(dt: number): void {
   const store = useSimulationStore.getState();
+
+  // When connected, server sends authoritative state at 60Hz — skip local physics
+  if (store.connected) return;
+
   const player = store.player;
   const input = getInputState();
 
