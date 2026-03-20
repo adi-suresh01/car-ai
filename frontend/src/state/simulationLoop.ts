@@ -216,7 +216,8 @@ function clientSidePrediction(dt: number): void {
   const maxOffset = PHYSICS.LANE_WIDTH_METERS * 0.5;
   newOffset = Math.max(-maxOffset, Math.min(maxOffset, newOffset));
 
-  const gear = predictedSpeed < 5 * MPH_TO_MPS ? 1
+  const gear = predictedSpeed < 0.5 * MPH_TO_MPS ? 0
+    : predictedSpeed < 5 * MPH_TO_MPS ? 1
     : predictedSpeed < 15 * MPH_TO_MPS ? 2
     : predictedSpeed < 30 * MPH_TO_MPS ? 3
     : predictedSpeed < 50 * MPH_TO_MPS ? 4
