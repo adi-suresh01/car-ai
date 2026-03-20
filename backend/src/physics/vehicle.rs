@@ -169,7 +169,7 @@ impl Vehicle {
 
         let max_speed_mps = MAX_SPEED_MPH * MPH_TO_MPS;
 
-        let accel = self.throttle * 6.0;
+        let accel = self.throttle * 10.0;
         let decel = self.brake * BRAKE_RATE_MPH_PER_S * MPH_TO_MPS;
         let drag = AERO_DRAG_COEFF * self.speed_mps * self.speed_mps;
         let rolling = if self.speed_mps > 0.01 {
@@ -268,7 +268,7 @@ impl Vehicle {
 
         let max_speed_mps = MAX_SPEED_MPH * MPH_TO_MPS;
 
-        let accel = self.throttle * 6.0;
+        let accel = self.throttle * 10.0;
         let decel = self.brake * BRAKE_RATE_MPH_PER_S * MPH_TO_MPS;
         let drag = AERO_DRAG_COEFF * self.speed_mps * self.speed_mps;
         let rolling = if self.speed_mps > 0.01 {
