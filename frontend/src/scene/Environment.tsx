@@ -174,7 +174,6 @@ function Mountains() {
           {/* Mountain body */}
           <mesh material={mountainMat}>
             <coneGeometry args={[m.radius, m.height, 6]} />
-            <meshStandardMaterial color={0x3a5a3a} roughness={0.95} flatShading />
           </mesh>
           {/* Snow cap */}
           <mesh position={[0, m.height * 0.35, 0]} material={snowMat}>
