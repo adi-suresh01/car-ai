@@ -213,6 +213,9 @@ function clientSidePrediction(dt: number): void {
     newOffset = absolutePos - newCenter;
   }
 
+  // Clamp to valid lane range
+  newLaneIndex = Math.max(0, Math.min(laneCount - 1, newLaneIndex));
+
   const maxOffset = PHYSICS.LANE_WIDTH_METERS * 0.5;
   newOffset = Math.max(-maxOffset, Math.min(maxOffset, newOffset));
 
