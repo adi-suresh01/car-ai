@@ -77,7 +77,12 @@ function CameraController() {
       halfRoad +
       player.lateralOffset;
 
-    camera.position.set(playerLaneX, DRIVER_EYE_HEIGHT, CAMERA_FORWARD_OFFSET);
+    // Subtle speed-based camera bob
+    bobTimeRef.current += speedRatio * 0.15;
+    const bobY = Math.sin(bobTimeRef.current * 12) * speedRatio * 0.004;
+    const bobX = Math.sin(bobTimeRef.current * 7.3) * speedRatio * 0.002;
+
+    camera.position.set(playerLaneX + bobX, DRIVER_EYE_HEIGHT + bobY, CAMERA_FORWARD_OFFSET);
 
     // Use lookAt to orient camera — preserves handedness (no L/R mirror)
     const st = smoothTangentRef.current;
