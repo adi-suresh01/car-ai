@@ -12,12 +12,15 @@ const MODE_DISPLAY: Record<MissionMode, { label: string; color: string }> = {
 export function MissionStatus() {
   const mission = useSimulationStore((s) => s.mission);
   const laneIndex = useThrottledSelector((s) => s.player.laneIndex, 200);
+  const speedMph = useThrottledSelector((s) => s.player.speedMph, 200);
   const display = MODE_DISPLAY[mission.mode];
+
+  const label = mission.mode === "hold" && speedMph < 1 ? "STOPPED" : display.label;
 
   return (
     <div className="hud-mission">
       <div className="mission-mode" style={{ color: display.color }}>
-        {display.label}
+        {label}
       </div>
       <div className="mission-detail">
         <span className="mission-unit">Lane {laneIndex + 1}</span>
