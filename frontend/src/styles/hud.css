@@ -73,7 +73,15 @@
   height: 100%;
   background: linear-gradient(90deg, var(--hud-accent), var(--hud-warn));
   border-radius: 2px;
-  transition: width 0.15s ease;
+  transition: width 0.15s ease, background 0.3s;
+}
+
+.speed-bar-fill.speed-bar-danger {
+  background: linear-gradient(90deg, var(--hud-warn), var(--hud-danger));
+}
+
+.speed-value.speed-warning {
+  color: var(--hud-danger);
 }
 
 .hud-gear {
