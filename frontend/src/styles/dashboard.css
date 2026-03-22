@@ -59,11 +59,11 @@
   position: absolute;
   top: 70px;
   right: 16px;
-  width: 200px;
+  width: 240px;
   display: flex;
   flex-direction: column;
   gap: 8px;
-  max-height: 180px;
+  max-height: 280px;
   overflow-y: auto;
   scrollbar-width: none;
   pointer-events: auto;
