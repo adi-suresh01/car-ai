@@ -25,8 +25,6 @@ function CameraController() {
   const { camera } = useThree();
   const smoothTangentRef = useRef<THREE.Vector3 | null>(null);
   const samplesRef = useRef<SplineSample[]>([]);
-  const lookAtMatRef = useRef(new THREE.Matrix4());
-  const pitchQuatRef = useRef(new THREE.Quaternion());
 
   const routeGeometry = useSimulationStore((s) => s.routeGeometry);
 
