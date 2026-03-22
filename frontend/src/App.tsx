@@ -188,6 +188,12 @@ export function App() {
         const input = document.querySelector<HTMLInputElement>(".console-text-input");
         if (input) input.focus();
       }
+      if (e.key === "Escape") {
+        // Blur any focused input to return keyboard control to driving
+        if (document.activeElement instanceof HTMLElement) {
+          document.activeElement.blur();
+        }
+      }
     },
     [toggleDebugPanel, toggleHelpOverlay]
   );
