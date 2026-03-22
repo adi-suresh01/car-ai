@@ -21,13 +21,6 @@ const CAMERA_PITCH = -0.18;
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
-function lerpAngle(current: number, target: number, alpha: number): number {
-  let diff = target - current;
-  while (diff > Math.PI) diff -= Math.PI * 2;
-  while (diff < -Math.PI) diff += Math.PI * 2;
-  return current + diff * alpha;
-}
-
 function CameraController() {
   const { camera } = useThree();
   const smoothTangentRef = useRef<THREE.Vector3 | null>(null);
