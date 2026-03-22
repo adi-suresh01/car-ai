@@ -25,6 +25,8 @@ const SHORTCUT_GROUPS: ShortcutGroup[] = [
       { keys: ["N"], description: "Open scenario selector" },
       { keys: ["H"], description: "Toggle this help overlay" },
       { keys: ["`"], description: "Toggle debug panel" },
+      { keys: ["Ctrl+K"], description: "Focus command input" },
+      { keys: ["Esc"], description: "Return focus to driving" },
     ],
   },
   {
