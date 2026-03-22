@@ -43,8 +43,17 @@ const mats = {
 };
 
 function SteeringWheel() {
+  const groupRef = useRef<THREE.Group>(null);
+
+  useFrame(() => {
+    if (!groupRef.current) return;
+    const steerDeg = useSimulationStore.getState().player.steerAngleDeg;
+    // Rotate the wheel around its Z axis (the column axis after tilt)
+    groupRef.current.rotation.z = -(steerDeg / PHYSICS.MAX_STEER_DEG) * Math.PI * 0.75;
+  });
+
   return (
-    <group position={[SW_X, SW_Y, SW_Z]} rotation={[SW_TILT, 0, 0]}>
+    <group position={[SW_X, SW_Y, SW_Z]} rotation={[SW_TILT, 0, 0]} ref={groupRef}>
       {/* Main ring */}
       <mesh material={mats.steering}>
         <torusGeometry args={[SW_RADIUS, 0.016, 16, 40]} />

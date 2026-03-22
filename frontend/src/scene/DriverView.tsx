@@ -96,6 +96,10 @@ function CameraController() {
     );
     camera.lookAt(lookTarget);
 
+    // Subtle roll when steering for immersion
+    const steerRatio = player.steerAngleDeg / PHYSICS.MAX_STEER_DEG;
+    camera.rotation.z = -steerRatio * 0.03;
+
     if (camera instanceof THREE.PerspectiveCamera) {
       const targetFov = BASE_FOV + MAX_FOV_BOOST * speedRatio;
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.05);
