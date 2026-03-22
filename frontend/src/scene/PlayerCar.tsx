@@ -1,6 +1,8 @@
 import { useRef, useMemo } from "react";
 import { useFrame, useThree } from "@react-three/fiber";
 import * as THREE from "three";
+import { useSimulationStore } from "../state/simulationStore";
+import { PHYSICS } from "../models/types";
 
 // ── All positions are camera-relative (camera = driver's eyes at origin) ──
 // Negative Y = below eye level, negative Z = in front of driver
