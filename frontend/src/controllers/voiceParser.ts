@@ -97,6 +97,15 @@ export function parseAndApplyVoiceCommand(utterance: string): boolean {
     return true;
   }
 
+  // Maintain current speed
+  if (lower.includes("maintain speed") || lower.includes("keep speed") || lower.includes("lock speed")) {
+    const currentSpeed = Math.round(store.player.speedMph);
+    useSimulationStore.setState({
+      mission: { ...mission, mode: "cruise", cruiseTargetSpeedMph: currentSpeed, source: "voice", updatedAt: Date.now() },
+    });
+    return true;
+  }
+
   return false;
 }
 
