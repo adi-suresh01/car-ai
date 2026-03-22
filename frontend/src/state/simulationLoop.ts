@@ -157,7 +157,8 @@ function clientSidePrediction(dt: number): void {
   const predictedS = player.positionS + predictedSpeed * dt;
 
   const totalLength = store.routeGeometry?.totalLength ?? 4000;
-  const clampedS = Math.min(predictedS, totalLength - 10);
+  // Loop back to start when reaching end of route
+  const clampedS = predictedS >= totalLength - 10 ? 0 : predictedS;
 
   // Steering: manual input or auto lane-change/lane-keeping
   let steerInput = input.steering;
