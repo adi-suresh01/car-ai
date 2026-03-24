@@ -208,7 +208,6 @@ fn extract_cruise_speed(tokens: &[&str]) -> Option<f64> {
     // (avoids "go left" matching as cruise)
     number
 }
-}
 
 /// Returns a confidence score (0.0-1.0) for the parsed intent.
 /// Higher means more keywords matched the pattern.
@@ -218,7 +217,7 @@ pub fn intent_confidence(intent: &VoiceIntent, utterance: &str) -> f64 {
 
     match intent {
         VoiceIntent::SetCruise { .. } => {
-            let mut score = 0.3; // base for having a number
+            let mut score: f64 = 0.3; // base for having a number
             if lower.contains("cruise") { score += 0.4; }
             if lower.contains("set") { score += 0.2; }
             if lower.contains("mph") || lower.contains("miles") { score += 0.1; }

@@ -1,4 +1,4 @@
-import { useRef, useMemo, useEffect } from "react";
+import { useRef, useMemo } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
@@ -7,11 +7,6 @@ import {
   sampleSpline,
   buildRoadMesh,
   buildLaneMarkings,
-  buildGuardrailPositions,
-  buildTreePositions,
-  generateMockRouteGeometry,
-  generateMockDirections,
-  generateMockRouteSummary,
   interpolateSampleAtS,
   type SplineSample,
 } from "./roadSpline";
@@ -24,13 +19,13 @@ interface RoadGeometryState {
   geometry: RouteGeometry;
 }
 
-function useRoadGeometry(): RoadGeometryState {
+function useRoadGeometry(): RoadGeometryState | null {
   const routeGeometry = useSimulationStore((s) => s.routeGeometry);
 
   return useMemo(() => {
-    const geo = routeGeometry ?? generateMockRouteGeometry();
-    const samples = sampleSpline(geo);
-    return { samples, geometry: geo };
+    if (!routeGeometry) return null;
+    const samples = sampleSpline(routeGeometry);
+    return { samples, geometry: routeGeometry };
   }, [routeGeometry]);
 }
 
@@ -567,17 +562,7 @@ function BirchTree({ tree }: { tree: TreeInstance }) {
 export function Road() {
   const roadState = useRoadGeometry();
 
-  useEffect(() => {
-    const store = useSimulationStore.getState();
-    if (!store.routeGeometry) {
-      const mockGeo = generateMockRouteGeometry();
-      const mockDirs = generateMockDirections(mockGeo);
-      const mockSummary = generateMockRouteSummary(mockGeo, mockDirs);
-      store.setRouteGeometry(mockGeo);
-      store.setRouteDirections(mockDirs);
-      store.setRouteSummary(mockSummary);
-    }
-  }, []);
+  if (!roadState) return null;
 
   return (
     <group>

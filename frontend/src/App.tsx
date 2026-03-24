@@ -6,7 +6,7 @@ import {
 } from "./state/simulationLoop";
 import { startInputListeners, stopInputListeners } from "./controllers/input";
 import { autopilot } from "./controllers/autopilot";
-import { fetchLayout } from "./services/api";
+import { fetchLayout, getRouteGeometry, getRouteDirections } from "./services/api";
 import { DriverView } from "./scene/DriverView";
 import { TopDownView } from "./scene/TopDownView";
 import { MissionStatus } from "./components/HUD/MissionStatus";
@@ -40,7 +40,7 @@ function ConnectionStatus() {
   return (
     <div className="connection-indicator">
       <div className={`connection-dot ${connected ? "connected" : "disconnected"}`} />
-      <span>{connected ? "Live" : "Offline (local physics)"}</span>
+      <span>{connected ? "Live" : "Connecting..."}</span>
     </div>
   );
 }
@@ -127,12 +127,19 @@ export function App() {
 
 
   useEffect(() => {
-    const setLayout = useSimulationStore.getState().setLayout;
+    const store = useSimulationStore.getState();
+
     fetchLayout()
-      .then((layout) => setLayout(layout))
-      .catch(() => {
-        // Layout fetch failed; simulation will operate without layout data
-      });
+      .then((layout) => store.setLayout(layout))
+      .catch((err) => console.error("[App] Layout fetch failed:", err));
+
+    getRouteGeometry()
+      .then((geo) => store.setRouteGeometry(geo))
+      .catch((err) => console.error("[App] Route geometry fetch failed:", err));
+
+    getRouteDirections()
+      .then((dirs) => store.setRouteDirections(dirs))
+      .catch((err) => console.error("[App] Route directions fetch failed:", err));
 
     autopilot.initialize();
 

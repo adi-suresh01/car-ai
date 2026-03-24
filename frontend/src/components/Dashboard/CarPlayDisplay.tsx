@@ -5,11 +5,6 @@ import {
   getRouteGeometry,
   getRouteDirections,
 } from "../../services/api";
-import {
-  generateMockRouteGeometry,
-  generateMockDirections,
-  generateMockRouteSummary,
-} from "../../scene/roadSpline";
 
 const PRESET_DESTINATIONS = [
   { label: "Santa Cruz Beach Boardwalk", sub: "Highway 17" },
@@ -387,16 +382,8 @@ export function CarPlayDisplay() {
       store.setRouteDirections(directions);
       store.setCurrentDirectionIndex(0);
       setActiveTab("status");
-    } catch {
-      const mockGeo = generateMockRouteGeometry();
-      const mockDirs = generateMockDirections(mockGeo);
-      const mockSummary = generateMockRouteSummary(mockGeo, mockDirs);
-
-      store.setRouteGeometry(mockGeo);
-      store.setRouteDirections(mockDirs);
-      store.setRouteSummary(mockSummary);
-      store.setCurrentDirectionIndex(0);
-      setActiveTab("status");
+    } catch (err) {
+      console.error("[CarPlay] Route planning failed:", err);
     } finally {
       store.setRouteLoading(false);
     }
