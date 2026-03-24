@@ -10,14 +10,12 @@ import { PlayerCar } from "./PlayerCar";
 import { TrafficVehicles } from "./TrafficVehicle";
 import { Scenery } from "./Scenery";
 import { PostProcessing } from "./PostProcessing";
-import { SpeedLines } from "./SpeedLines";
-
-const BASE_FOV = 65;
-const MAX_FOV_BOOST = 6;
+const BASE_FOV = 60;
+const MAX_FOV_BOOST = 3;
 const DRIVER_EYE_HEIGHT = 1.22;
 const CAMERA_FORWARD_OFFSET = 0.05;
 const CAMERA_HEADING_LERP = 0.25;
-const CAMERA_PITCH = -0.18;
+const CAMERA_PITCH = -0.22;
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
 
@@ -78,9 +76,9 @@ function CameraController() {
       player.lateralOffset;
 
     // Subtle speed-based camera bob
-    bobTimeRef.current += speedRatio * 0.15;
-    const bobY = Math.sin(bobTimeRef.current * 12) * speedRatio * 0.004;
-    const bobX = Math.sin(bobTimeRef.current * 7.3) * speedRatio * 0.002;
+    bobTimeRef.current += speedRatio * 0.08;
+    const bobY = Math.sin(bobTimeRef.current * 10) * speedRatio * 0.002;
+    const bobX = Math.sin(bobTimeRef.current * 6) * speedRatio * 0.001;
 
     camera.position.set(playerLaneX + bobX, DRIVER_EYE_HEIGHT + bobY, CAMERA_FORWARD_OFFSET);
 
@@ -116,7 +114,6 @@ function DriverScene() {
       <PlayerCar />
       <TrafficVehicles />
       <Scenery />
-      <SpeedLines />
       <PostProcessing />
     </>
   );
@@ -129,7 +126,7 @@ export function DriverView() {
       gl={{
         antialias: true,
         toneMapping: THREE.ACESFilmicToneMapping,
-        toneMappingExposure: 0.8,
+        toneMappingExposure: 0.95,
         outputColorSpace: THREE.SRGBColorSpace,
         powerPreference: "high-performance",
       }}

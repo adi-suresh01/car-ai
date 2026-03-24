@@ -17,8 +17,7 @@ import {
 } from "./roadSpline";
 import type { RouteGeometry } from "../models/types";
 
-const TREE_COUNT = 200;
-const GUARDRAIL_SPACING = 4;
+const TREE_COUNT = 400;
 
 interface RoadGeometryState {
   samples: SplineSample[];
@@ -34,6 +33,10 @@ function useRoadGeometry(): RoadGeometryState {
     return { samples, geometry: geo };
   }, [routeGeometry]);
 }
+
+/* -------------------------------------------------------------------------- */
+/*  RoadSurface — darkened asphalt with PBR textures                          */
+/* -------------------------------------------------------------------------- */
 
 function RoadSurface({ samples, geometry }: RoadGeometryState) {
   const meshRef = useRef<THREE.Mesh>(null);
@@ -85,9 +88,9 @@ function RoadSurface({ samples, geometry }: RoadGeometryState) {
         map={diffuse}
         normalMap={normal}
         roughnessMap={roughness}
-        roughness={0.85}
-        metalness={0.05}
-        color={0x555555}
+        roughness={0.92}
+        metalness={0}
+        color={0x444444}
         side={THREE.DoubleSide}
         polygonOffset
         polygonOffsetFactor={1}
@@ -96,6 +99,10 @@ function RoadSurface({ samples, geometry }: RoadGeometryState) {
     </mesh>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*  LaneMarkings — simple white, no emissive glow                            */
+/* -------------------------------------------------------------------------- */
 
 function LaneMarkings({ samples, geometry }: RoadGeometryState) {
   const groupRef = useRef<THREE.Group>(null);
@@ -146,9 +153,9 @@ function LaneMarkings({ samples, geometry }: RoadGeometryState) {
       {solidGeometries.map((geom, i) => (
         <mesh key={`solid-${i}`} geometry={geom}>
           <meshStandardMaterial
-            color={0xffdd44}
-            emissive={0xffaa00}
-            emissiveIntensity={0.8}
+            color={0xeeeeee}
+            emissive={0x000000}
+            emissiveIntensity={0}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -156,9 +163,9 @@ function LaneMarkings({ samples, geometry }: RoadGeometryState) {
       {dashedGeometries.map((geom, i) => (
         <mesh key={`dashed-${i}`} geometry={geom}>
           <meshStandardMaterial
-            color={0xffffff}
-            emissive={0xeeeeee}
-            emissiveIntensity={0.6}
+            color={0xdddddd}
+            emissive={0x000000}
+            emissiveIntensity={0}
             side={THREE.DoubleSide}
           />
         </mesh>
@@ -167,231 +174,55 @@ function LaneMarkings({ samples, geometry }: RoadGeometryState) {
   );
 }
 
-function GuardRails({ samples, geometry }: RoadGeometryState) {
-  const groupRef = useRef<THREE.Group>(null);
+/* -------------------------------------------------------------------------- */
+/*  RollingTerrain — subdivided plane with multi-octave vertex displacement   */
+/* -------------------------------------------------------------------------- */
 
-  // Build continuous barrier geometry along the road edges
-  const { leftBarrier, rightBarrier } = useMemo(() => {
-    const laneCount = geometry.laneCount;
-    const laneWidth = geometry.laneWidth;
-    const halfWidth = (laneCount * laneWidth) / 2 + 1.5;
-    const barrierHeight = 0.75;
-    const barrierThickness = 0.12;
-    const postWidth = 0.1;
-    const postSpacing = 4; // meters between posts
-    const railY = 0.45; // height of horizontal rail
-
-    function buildBarrierGeometry(side: number) {
-      const positions: number[] = [];
-      const normals: number[] = [];
-      const indices: number[] = [];
-
-      // Horizontal rail — continuous strip along road
-      const step = 2;
-      const railVerts: number[] = [];
-      const railNorms: number[] = [];
-      const railIdx: number[] = [];
-
-      for (let i = 0; i < samples.length; i += step) {
-        const s = samples[i];
-        const nx = s.normal.x * halfWidth * side;
-        const nz = s.normal.z * halfWidth * side;
-        const bx = s.position.x + nx;
-        const bz = s.position.z + nz;
-
-        // Outward normal for the barrier face
-        const outX = s.normal.x * side;
-        const outZ = s.normal.z * side;
-
-        const idx = railVerts.length / 3;
-
-        // Bottom of rail (inner face)
-        railVerts.push(bx, railY - barrierThickness, bz);
-        railNorms.push(-outX, 0, -outZ);
-        // Top of rail (inner face)
-        railVerts.push(bx, railY + barrierThickness, bz);
-        railNorms.push(-outX, 0, -outZ);
-        // Bottom of rail (outer face)
-        railVerts.push(bx + outX * barrierThickness, railY - barrierThickness, bz + outZ * barrierThickness);
-        railNorms.push(outX, 0, outZ);
-        // Top of rail (outer face)
-        railVerts.push(bx + outX * barrierThickness, railY + barrierThickness, bz + outZ * barrierThickness);
-        railNorms.push(outX, 0, outZ);
-
-        // Top face
-        railVerts.push(bx, railY + barrierThickness, bz);
-        railNorms.push(0, 1, 0);
-        railVerts.push(bx + outX * barrierThickness, railY + barrierThickness, bz + outZ * barrierThickness);
-        railNorms.push(0, 1, 0);
-
-        if (i > 0) {
-          const prev = idx - 6;
-          // Inner face quad
-          railIdx.push(prev, prev + 1, idx + 1, prev, idx + 1, idx);
-          // Outer face quad
-          railIdx.push(prev + 2, idx + 2, idx + 3, prev + 2, idx + 3, prev + 3);
-          // Top face quad
-          railIdx.push(prev + 4, idx + 4, idx + 5, prev + 4, idx + 5, prev + 5);
-        }
-      }
-
-      positions.push(...railVerts);
-      normals.push(...railNorms);
-      indices.push(...railIdx);
-
-      // Posts — vertical elements at intervals
-      const postBaseIdx = positions.length / 3;
-      let postCount = 0;
-
-      for (let i = 0; i < samples.length; i += Math.round(postSpacing / 2)) {
-        const s = samples[i];
-        const nx = s.normal.x * halfWidth * side;
-        const nz = s.normal.z * halfWidth * side;
-        const cx = s.position.x + nx;
-        const cz = s.position.z + nz;
-
-        // Post is a vertical box
-        const hw = postWidth / 2;
-        const hd = postWidth / 2;
-        const baseY = 0.05;
-        const topY = barrierHeight;
-
-        const tx = s.tangent.x;
-        const tz = s.tangent.z;
-
-        const idx = positions.length / 3;
-
-        // Front face (toward road)
-        positions.push(cx - tx * hd, baseY, cz - tz * hd);
-        positions.push(cx - tx * hd, topY, cz - tz * hd);
-        positions.push(cx + tx * hd, topY, cz + tz * hd);
-        positions.push(cx + tx * hd, baseY, cz + tz * hd);
-        for (let n = 0; n < 4; n++) normals.push(-s.normal.x * side, 0, -s.normal.z * side);
-        indices.push(idx, idx + 1, idx + 2, idx, idx + 2, idx + 3);
-
-        // Outer face
-        const oIdx = positions.length / 3;
-        const ox = s.normal.x * side * postWidth;
-        const oz = s.normal.z * side * postWidth;
-        positions.push(cx - tx * hd + ox, baseY, cz - tz * hd + oz);
-        positions.push(cx - tx * hd + ox, topY, cz - tz * hd + oz);
-        positions.push(cx + tx * hd + ox, topY, cz + tz * hd + oz);
-        positions.push(cx + tx * hd + ox, baseY, cz + tz * hd + oz);
-        for (let n = 0; n < 4; n++) normals.push(s.normal.x * side, 0, s.normal.z * side);
-        indices.push(oIdx, oIdx + 2, oIdx + 1, oIdx, oIdx + 3, oIdx + 2);
-
-        postCount++;
-      }
-
-      const geom = new THREE.BufferGeometry();
-      geom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-      geom.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
-      geom.setIndex(indices);
-      return geom;
-    }
-
-    return {
-      leftBarrier: buildBarrierGeometry(1),
-      rightBarrier: buildBarrierGeometry(-1),
-    };
-  }, [samples, geometry]);
-
-  useFrame(() => {
-    const store = useSimulationStore.getState();
-    const posS = store.playerPositionS;
-    const interpSample = interpolateSampleAtS(samples, posS);
-
-    if (groupRef.current) {
-      groupRef.current.position.set(
-        -interpSample.position.x,
-        0,
-        -interpSample.position.z
-      );
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      <mesh geometry={leftBarrier}>
-        <meshStandardMaterial color={0x707070} metalness={0.7} roughness={0.35} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh geometry={rightBarrier}>
-        <meshStandardMaterial color={0x707070} metalness={0.7} roughness={0.35} side={THREE.DoubleSide} />
-      </mesh>
-    </group>
-  );
-}
-
-function RoadsideTrees({ samples, geometry }: RoadGeometryState) {
-  const groupRef = useRef<THREE.Group>(null);
-
-  const treeData = useMemo(
-    () => buildTreePositions(samples, geometry.laneCount, geometry.laneWidth, TREE_COUNT, 42),
-    [samples, geometry]
-  );
-
-  useFrame(() => {
-    const store = useSimulationStore.getState();
-    const posS = store.playerPositionS;
-    const interpSample = interpolateSampleAtS(samples, posS);
-
-    if (groupRef.current) {
-      groupRef.current.position.set(
-        -interpSample.position.x,
-        0,
-        -interpSample.position.z
-      );
-    }
-  });
-
-  return (
-    <group ref={groupRef}>
-      {treeData.map((tree, i) => (
-        <group key={i} position={[tree.position.x, tree.position.y, tree.position.z]} scale={tree.scale}>
-          {/* Trunk */}
-          <mesh position={[0, tree.trunkHeight / 2, 0]} castShadow>
-            <cylinderGeometry args={[0.12, 0.22, tree.trunkHeight, 6]} />
-            <meshStandardMaterial color={0x5a422a} roughness={0.92} />
-          </mesh>
-          {/* Bottom foliage -- widest layer, positioned so base sits at trunk top */}
-          <mesh position={[0, tree.trunkHeight + 2.0, 0]} castShadow>
-            <coneGeometry args={[2.0, 4, 8]} />
-            <meshStandardMaterial color={0x1a5a1a} roughness={0.88} />
-          </mesh>
-          {/* Middle foliage */}
-          <mesh position={[0, tree.trunkHeight + 4.0, 0]} castShadow>
-            <coneGeometry args={[1.5, 3.2, 8]} />
-            <meshStandardMaterial color={0x226622} roughness={0.88} />
-          </mesh>
-          {/* Top foliage -- narrowest, tip of tree */}
-          <mesh position={[0, tree.trunkHeight + 5.6, 0]} castShadow>
-            <coneGeometry args={[0.9, 2.4, 7]} />
-            <meshStandardMaterial color={0x2a7a2a} roughness={0.85} />
-          </mesh>
-        </group>
-      ))}
-    </group>
-  );
-}
-
-function TerrainPlane({ samples }: { samples: SplineSample[] }) {
+function RollingTerrain({ samples }: { samples: SplineSample[] }) {
   const meshRef = useRef<THREE.Mesh>(null);
 
+  const terrainGeom = useMemo(() => {
+    const size = 2400;
+    const segments = 128;
+    const geom = new THREE.PlaneGeometry(size, size, segments, segments);
+    geom.rotateX(-Math.PI / 2);
+
+    const positions = geom.attributes.position;
+    for (let i = 0; i < positions.count; i++) {
+      const x = positions.getX(i);
+      const z = positions.getZ(i);
+
+      // Multi-octave sinusoidal noise for gentle rolling hills
+      const freq1 = 0.002;
+      const freq2 = 0.008;
+      const freq3 = 0.02;
+      const h1 = Math.sin(x * freq1 + 1.3) * Math.cos(z * freq1 + 0.7) * 25;
+      const h2 = Math.sin(x * freq2 + 5.1) * Math.cos(z * freq2 + 2.3) * 8;
+      const h3 = Math.sin(x * freq3) * Math.cos(z * freq3 + 4.1) * 2;
+      positions.setY(i, h1 + h2 + h3 - 1.5);
+    }
+
+    geom.computeVertexNormals();
+    return geom;
+  }, []);
+
+  // Lush grass-green DataTexture
   const groundTexture = useMemo(() => {
     const size = 256;
     const data = new Uint8Array(size * size * 4);
     for (let i = 0; i < size * size; i++) {
-      const noise = Math.random() * 18;
+      const noise = Math.random() * 20;
       const idx = i * 4;
-      data[idx] = 32 + noise;
-      data[idx + 1] = 50 + noise * 1.2;
-      data[idx + 2] = 24 + noise * 0.6;
-      data[idx + 3] = 255;
+      // Warm green tones
+      data[idx] = 50 + noise * 0.8;       // R
+      data[idx + 1] = 90 + noise * 1.3;   // G
+      data[idx + 2] = 30 + noise * 0.4;   // B
+      data[idx + 3] = 255;                 // A
     }
     const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
     tex.wrapS = THREE.RepeatWrapping;
     tex.wrapT = THREE.RepeatWrapping;
-    tex.repeat.set(120, 120);
+    tex.repeat.set(150, 150);
     tex.needsUpdate = true;
     return tex;
   }, []);
@@ -410,60 +241,328 @@ function TerrainPlane({ samples }: { samples: SplineSample[] }) {
     }
   });
 
-  const terrainGeom = useMemo(() => {
-    if (samples.length < 2) {
-      const geom = new THREE.BufferGeometry();
-      const h = 1200;
-      const positions = new Float32Array([-h, 0, -h, h, 0, -h, h, 0, h, -h, 0, h]);
-      const normals = new Float32Array([0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0]);
-      const uvs = new Float32Array([0, 0, 1, 0, 1, 1, 0, 1]);
-      const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
-      geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-      geom.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
-      geom.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-      geom.setIndex(new THREE.BufferAttribute(indices, 1));
-      return geom;
-    }
-
-    const center = samples[Math.floor(samples.length / 2)].position;
-    const geom = new THREE.BufferGeometry();
-    const half = 1200;
-    const cx = center.x;
-    const cz = center.z;
-    const positions = new Float32Array([
-      cx - half, 0, cz - half,
-      cx + half, 0, cz - half,
-      cx + half, 0, cz + half,
-      cx - half, 0, cz + half,
-    ]);
-    const normals = new Float32Array([
-      0, 1, 0,
-      0, 1, 0,
-      0, 1, 0,
-      0, 1, 0,
-    ]);
-    const uvs = new Float32Array([
-      0, 0, 1, 0, 1, 1, 0, 1,
-    ]);
-    const indices = new Uint16Array([0, 1, 2, 0, 2, 3]);
-    geom.setAttribute("position", new THREE.BufferAttribute(positions, 3));
-    geom.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
-    geom.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
-    geom.setIndex(new THREE.BufferAttribute(indices, 1));
-    return geom;
-  }, [samples]);
-
   return (
     <mesh ref={meshRef} geometry={terrainGeom} receiveShadow>
       <meshStandardMaterial
         map={groundTexture}
-        color={0x2a4518}
-        roughness={0.97}
+        color={0x4a7a30}
+        roughness={0.95}
         metalness={0}
       />
     </mesh>
   );
 }
+
+/* -------------------------------------------------------------------------- */
+/*  GrassVerge — organic transition strips along both road edges              */
+/* -------------------------------------------------------------------------- */
+
+function GrassVerge({ samples, geometry }: RoadGeometryState) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  const vergeGeom = useMemo(() => {
+    if (samples.length < 2) return null;
+
+    const laneCount = geometry.laneCount;
+    const laneWidth = geometry.laneWidth;
+    const halfRoadWidth = (laneCount * laneWidth) / 2;
+    const vergeWidth = 1.8;
+    const vergeHeight = 0.04; // 4cm raised above road
+
+    const positions: number[] = [];
+    const normals: number[] = [];
+    const uvs: number[] = [];
+    const indices: number[] = [];
+    const step = 2;
+
+    for (let side = -1; side <= 1; side += 2) {
+      const baseVertIdx = positions.length / 3;
+      let segCount = 0;
+
+      for (let i = 0; i < samples.length; i += step) {
+        const s = samples[i];
+        // Inner edge: at road boundary
+        const innerDist = halfRoadWidth * side;
+        const innerX = s.position.x + s.normal.x * innerDist;
+        const innerZ = s.position.z + s.normal.z * innerDist;
+        // Outer edge: road boundary + verge width
+        const outerDist = (halfRoadWidth + vergeWidth) * side;
+        const outerX = s.position.x + s.normal.x * outerDist;
+        const outerZ = s.position.z + s.normal.z * outerDist;
+
+        const v = i / (samples.length - 1);
+
+        // Inner vertex
+        positions.push(innerX, vergeHeight, innerZ);
+        normals.push(0, 1, 0);
+        uvs.push(0, v * 100);
+
+        // Outer vertex
+        positions.push(outerX, vergeHeight, outerZ);
+        normals.push(0, 1, 0);
+        uvs.push(1, v * 100);
+
+        if (segCount > 0) {
+          const idx = baseVertIdx + segCount * 2;
+          const prev = idx - 2;
+          indices.push(prev, prev + 1, idx + 1);
+          indices.push(prev, idx + 1, idx);
+        }
+        segCount++;
+      }
+    }
+
+    const bufferGeom = new THREE.BufferGeometry();
+    bufferGeom.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
+    bufferGeom.setAttribute("normal", new THREE.Float32BufferAttribute(normals, 3));
+    bufferGeom.setAttribute("uv", new THREE.Float32BufferAttribute(uvs, 2));
+    bufferGeom.setIndex(indices);
+    return bufferGeom;
+  }, [samples, geometry]);
+
+  // Bright grass texture for the verge
+  const vergeTexture = useMemo(() => {
+    const size = 64;
+    const data = new Uint8Array(size * size * 4);
+    for (let i = 0; i < size * size; i++) {
+      const noise = Math.random() * 15;
+      const idx = i * 4;
+      data[idx] = 55 + noise;          // R
+      data[idx + 1] = 110 + noise * 2; // G
+      data[idx + 2] = 35 + noise * 0.5; // B
+      data[idx + 3] = 255;
+    }
+    const tex = new THREE.DataTexture(data, size, size, THREE.RGBAFormat);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    tex.repeat.set(4, 200);
+    tex.needsUpdate = true;
+    return tex;
+  }, []);
+
+  useFrame(() => {
+    const store = useSimulationStore.getState();
+    const posS = store.playerPositionS;
+    const interpSample = interpolateSampleAtS(samples, posS);
+
+    if (groupRef.current) {
+      groupRef.current.position.set(
+        -interpSample.position.x,
+        0,
+        -interpSample.position.z
+      );
+    }
+  });
+
+  if (!vergeGeom) return null;
+
+  return (
+    <group ref={groupRef}>
+      <mesh geometry={vergeGeom} receiveShadow>
+        <meshStandardMaterial
+          map={vergeTexture}
+          color={0x5a9a35}
+          roughness={0.95}
+          metalness={0}
+          side={THREE.DoubleSide}
+        />
+      </mesh>
+    </group>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  RoadsideTrees — 400 mixed trees: conifer, deciduous, birch               */
+/* -------------------------------------------------------------------------- */
+
+// Seeded random utility (deterministic per index)
+function seededRandom(seed: number, n: number): number {
+  const x = Math.sin(seed + n * 127.1) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+// Tree type enum
+const TREE_CONIFER = 0;
+const TREE_DECIDUOUS = 1;
+const TREE_BIRCH = 2;
+
+interface TreeInstance {
+  position: THREE.Vector3;
+  scale: number;
+  trunkHeight: number;
+  treeType: number;
+}
+
+function RoadsideTrees({ samples, geometry }: RoadGeometryState) {
+  const groupRef = useRef<THREE.Group>(null);
+
+  const treeData = useMemo((): TreeInstance[] => {
+    const halfWidth = (geometry.laneCount * geometry.laneWidth) / 2;
+    const trees: TreeInstance[] = [];
+    const seed = 42;
+
+    for (let i = 0; i < TREE_COUNT; i++) {
+      const sampleIdx = Math.floor(seededRandom(seed, i * 5) * samples.length);
+      const sample = samples[Math.min(sampleIdx, samples.length - 1)];
+      const side = seededRandom(seed, i * 5 + 1) > 0.5 ? 1 : -1;
+      // Trees close to road: min 4m from road edge, max ~40m out
+      const dist = halfWidth + 4 + seededRandom(seed, i * 5 + 2) * 36;
+
+      const pos = new THREE.Vector3(
+        sample.position.x + sample.normal.x * dist * side,
+        0,
+        sample.position.z + sample.normal.z * dist * side
+      );
+
+      // Type distribution: 60% conifer, 25% deciduous, 15% birch
+      const typeRoll = seededRandom(seed, i * 5 + 3);
+      let treeType: number;
+      if (typeRoll < 0.6) {
+        treeType = TREE_CONIFER;
+      } else if (typeRoll < 0.85) {
+        treeType = TREE_DECIDUOUS;
+      } else {
+        treeType = TREE_BIRCH;
+      }
+
+      const scale = 0.7 + seededRandom(seed, i * 5 + 4) * 0.8;
+
+      let trunkHeight: number;
+      if (treeType === TREE_CONIFER) {
+        trunkHeight = 2 + seededRandom(seed, i * 11) * 2.5;
+      } else if (treeType === TREE_DECIDUOUS) {
+        trunkHeight = 2 + seededRandom(seed, i * 11) * 1.5;
+      } else {
+        trunkHeight = 3 + seededRandom(seed, i * 11) * 2;
+      }
+
+      trees.push({ position: pos, scale, trunkHeight, treeType });
+    }
+
+    return trees;
+  }, [samples, geometry]);
+
+  useFrame(() => {
+    const store = useSimulationStore.getState();
+    const posS = store.playerPositionS;
+    const interpSample = interpolateSampleAtS(samples, posS);
+
+    if (groupRef.current) {
+      groupRef.current.position.set(
+        -interpSample.position.x,
+        0,
+        -interpSample.position.z
+      );
+    }
+  });
+
+  return (
+    <group ref={groupRef}>
+      {treeData.map((tree, i) => {
+        switch (tree.treeType) {
+          case TREE_CONIFER:
+            return <ConiferTree key={i} tree={tree} />;
+          case TREE_DECIDUOUS:
+            return <DeciduousTree key={i} tree={tree} />;
+          case TREE_BIRCH:
+            return <BirchTree key={i} tree={tree} />;
+          default:
+            return <ConiferTree key={i} tree={tree} />;
+        }
+      })}
+    </group>
+  );
+}
+
+/* --- Conifer: 3-layer cone foliage, dark green --- */
+
+function ConiferTree({ tree }: { tree: TreeInstance }) {
+  return (
+    <group
+      position={[tree.position.x, tree.position.y, tree.position.z]}
+      scale={tree.scale}
+    >
+      {/* Trunk */}
+      <mesh position={[0, tree.trunkHeight / 2, 0]} castShadow>
+        <cylinderGeometry args={[0.1, 0.2, tree.trunkHeight, 6]} />
+        <meshStandardMaterial color={0x5a422a} roughness={0.92} />
+      </mesh>
+      {/* Bottom foliage — widest layer */}
+      <mesh position={[0, tree.trunkHeight + 2.0, 0]} castShadow>
+        <coneGeometry args={[2.0, 4, 8]} />
+        <meshStandardMaterial color={0x1a4a1a} roughness={0.88} />
+      </mesh>
+      {/* Middle foliage */}
+      <mesh position={[0, tree.trunkHeight + 4.0, 0]} castShadow>
+        <coneGeometry args={[1.5, 3.2, 8]} />
+        <meshStandardMaterial color={0x1e551e} roughness={0.88} />
+      </mesh>
+      {/* Top foliage — narrowest, tip */}
+      <mesh position={[0, tree.trunkHeight + 5.6, 0]} castShadow>
+        <coneGeometry args={[0.9, 2.4, 7]} />
+        <meshStandardMaterial color={0x2a5a2a} roughness={0.85} />
+      </mesh>
+    </group>
+  );
+}
+
+/* --- Deciduous: round-topped with icosahedron foliage --- */
+
+function DeciduousTree({ tree }: { tree: TreeInstance }) {
+  return (
+    <group
+      position={[tree.position.x, tree.position.y, tree.position.z]}
+      scale={tree.scale}
+    >
+      {/* Trunk */}
+      <mesh position={[0, tree.trunkHeight / 2, 0]} castShadow>
+        <cylinderGeometry args={[0.12, 0.25, tree.trunkHeight, 6]} />
+        <meshStandardMaterial color={0x5a422a} roughness={0.92} />
+      </mesh>
+      {/* Main canopy — rounded blob */}
+      <mesh position={[0, tree.trunkHeight + 2.2, 0]} castShadow>
+        <icosahedronGeometry args={[2.8, 1]} />
+        <meshStandardMaterial color={0x3a6a2a} roughness={0.88} />
+      </mesh>
+      {/* Secondary canopy offset slightly */}
+      <mesh position={[0.6, tree.trunkHeight + 3.0, 0.4]} castShadow>
+        <icosahedronGeometry args={[1.8, 1]} />
+        <meshStandardMaterial color={0x2e5e24} roughness={0.88} />
+      </mesh>
+    </group>
+  );
+}
+
+/* --- Birch: white trunk, small light-green canopy --- */
+
+function BirchTree({ tree }: { tree: TreeInstance }) {
+  return (
+    <group
+      position={[tree.position.x, tree.position.y, tree.position.z]}
+      scale={tree.scale}
+    >
+      {/* White birch trunk — thin */}
+      <mesh position={[0, tree.trunkHeight / 2, 0]} castShadow>
+        <cylinderGeometry args={[0.06, 0.1, tree.trunkHeight, 6]} />
+        <meshStandardMaterial color={0xd8d0c0} roughness={0.75} />
+      </mesh>
+      {/* Canopy — airy, light green */}
+      <mesh position={[0, tree.trunkHeight + 1.8, 0]} castShadow>
+        <icosahedronGeometry args={[2.0, 1]} />
+        <meshStandardMaterial color={0x5a8a3a} roughness={0.85} />
+      </mesh>
+      {/* Secondary tuft */}
+      <mesh position={[-0.5, tree.trunkHeight + 2.8, 0.3]} castShadow>
+        <icosahedronGeometry args={[1.3, 1]} />
+        <meshStandardMaterial color={0x68964a} roughness={0.85} />
+      </mesh>
+    </group>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/*  Road — main export composing all sub-components                           */
+/* -------------------------------------------------------------------------- */
 
 export function Road() {
   const roadState = useRoadGeometry();
@@ -482,10 +581,10 @@ export function Road() {
 
   return (
     <group>
-      <TerrainPlane samples={roadState.samples} />
+      <RollingTerrain samples={roadState.samples} />
       <RoadSurface {...roadState} />
       <LaneMarkings {...roadState} />
-      <GuardRails {...roadState} />
+      <GrassVerge {...roadState} />
       <RoadsideTrees {...roadState} />
     </group>
   );

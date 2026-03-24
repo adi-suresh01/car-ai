@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useCallback, useState } from "react";
 import { useSimulationStore } from "./state/simulationStore";
 import {
   startSimulationLoop,
@@ -9,13 +9,10 @@ import { autopilot } from "./controllers/autopilot";
 import { fetchLayout } from "./services/api";
 import { DriverView } from "./scene/DriverView";
 import { TopDownView } from "./scene/TopDownView";
-import { Speedometer } from "./components/HUD/Speedometer";
-import { GearIndicator } from "./components/HUD/GearIndicator";
 import { MissionStatus } from "./components/HUD/MissionStatus";
 import { VoiceIndicator } from "./components/HUD/VoiceIndicator";
 import { AutopilotIndicator } from "./components/HUD/AutopilotIndicator";
 import { HelpOverlay } from "./components/HUD/HelpOverlay";
-import { CarPlayDisplay } from "./components/Dashboard/CarPlayDisplay";
 import { DashboardConsole } from "./components/Dashboard/DashboardConsole";
 import { VoiceDebugPanel } from "./components/Voice/VoiceDebugPanel";
 import { VoiceListener } from "./components/Voice/VoiceListener";
@@ -66,15 +63,6 @@ function ViewToggle() {
       >
         Tactical
       </button>
-    </div>
-  );
-}
-
-function HelpHint() {
-  return (
-    <div className="help-hint">
-      <kbd className="help-hint-key">H</kbd>
-      <span>Help</span>
     </div>
   );
 }
@@ -136,7 +124,7 @@ export function App() {
   const showDebugPanel = useSimulationStore((s) => s.showDebugPanel);
   const toggleDebugPanel = useSimulationStore((s) => s.toggleDebugPanel);
   const toggleHelpOverlay = useSimulationStore((s) => s.toggleHelpOverlay);
-  const [infotainmentExpanded, setInfotainmentExpanded] = useState(false);
+
 
   useEffect(() => {
     const setLayout = useSimulationStore.getState().setLayout;
@@ -215,32 +203,11 @@ export function App() {
       <div className="hud-layer">
         <ConnectionStatus />
         <ViewToggle />
-        <HelpHint />
-
-        <div className="hud-bottom-left">
-          <Speedometer />
-          <GearIndicator />
-        </div>
 
         <div className="hud-bottom-right">
           <AutopilotIndicator />
           <VoiceIndicator />
           <MissionStatus />
-        </div>
-
-        <div
-          className={`dashboard-infotainment ${infotainmentExpanded ? "expanded" : "collapsed"}`}
-          onClick={() => { if (!infotainmentExpanded) setInfotainmentExpanded(true); }}
-        >
-          {infotainmentExpanded && (
-            <button
-              className="infotainment-collapse-btn"
-              onClick={(e) => { e.stopPropagation(); setInfotainmentExpanded(false); }}
-            >
-              ✕
-            </button>
-          )}
-          <CarPlayDisplay />
         </div>
 
         <div className="dashboard-console-panel">

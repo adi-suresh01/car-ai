@@ -2,18 +2,18 @@ import { EffectComposer, Bloom, Vignette, ChromaticAberration } from "@react-thr
 import { BlendFunction } from "postprocessing";
 import { Vector2 } from "three";
 
-const CHROMA_OFFSET = new Vector2(0.0006, 0.0006);
+const CHROMA_OFFSET = new Vector2(0.0004, 0.0004);
 
 export function PostProcessing() {
   return (
     <EffectComposer>
       <Bloom
-        luminanceThreshold={0.8}
-        luminanceSmoothing={0.3}
-        intensity={0.4}
+        luminanceThreshold={0.92}
+        luminanceSmoothing={0.4}
+        intensity={0.15}
         mipmapBlur
       />
-      <Vignette offset={0.3} darkness={0.55} />
+      <Vignette offset={0.25} darkness={0.5} />
       <ChromaticAberration
         blendFunction={BlendFunction.NORMAL}
         offset={CHROMA_OFFSET}
