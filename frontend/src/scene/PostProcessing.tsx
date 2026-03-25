@@ -1,8 +1,4 @@
-import { EffectComposer, Bloom, Vignette, ChromaticAberration } from "@react-three/postprocessing";
-import { BlendFunction } from "postprocessing";
-import { Vector2 } from "three";
-
-const CHROMA_OFFSET = new Vector2(0.0004, 0.0004);
+import { EffectComposer, Bloom, Vignette } from "@react-three/postprocessing";
 
 export function PostProcessing() {
   return (
@@ -14,12 +10,6 @@ export function PostProcessing() {
         mipmapBlur
       />
       <Vignette offset={0.25} darkness={0.5} />
-      <ChromaticAberration
-        blendFunction={BlendFunction.NORMAL}
-        offset={CHROMA_OFFSET}
-        radialModulation={false}
-        modulationOffset={0.0}
-      />
     </EffectComposer>
   );
 }

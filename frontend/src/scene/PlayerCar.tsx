@@ -7,15 +7,15 @@ import { PHYSICS } from "../models/types";
 // ── All positions are camera-relative (camera = driver's eyes at origin) ──
 // Negative Y = below eye level, negative Z = in front of driver
 
-const DASH_TOP_Y = -0.38;
-const DASH_Z = -0.50;
+const DASH_TOP_Y = -0.32;
+const DASH_Z = -0.42;
 const DASH_WIDTH = 2.0;
 const DASH_DEPTH = 0.55;
 const DASH_THICK = 0.16;
 
 const SW_X = -0.28;
-const SW_Y = -0.34;
-const SW_Z = -0.38;
+const SW_Y = -0.28;
+const SW_Z = -0.32;
 const SW_RADIUS = 0.19;
 const SW_TILT = -0.42;
 

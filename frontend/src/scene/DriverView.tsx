@@ -15,9 +15,11 @@ const MAX_FOV_BOOST = 3;
 const DRIVER_EYE_HEIGHT = 1.22;
 const CAMERA_FORWARD_OFFSET = 0.05;
 const CAMERA_HEADING_LERP = 0.25;
-const CAMERA_PITCH = -0.22;
+const CAMERA_PITCH = -0.12;
 
 const WORLD_UP = new THREE.Vector3(0, 1, 0);
+
+const _v1 = new THREE.Vector3();
 
 function CameraController() {
   const { camera } = useThree();
@@ -36,7 +38,7 @@ function CameraController() {
   }, [routeGeometry]);
 
   useEffect(() => {
-    camera.up.copy(WORLD_UP);
+    camera.up.set(0, -1, 0);
     if (camera instanceof THREE.PerspectiveCamera) {
       camera.fov = BASE_FOV;
       camera.near = 0.1;
@@ -82,18 +84,20 @@ function CameraController() {
 
     camera.position.set(playerLaneX + bobX, DRIVER_EYE_HEIGHT + bobY, CAMERA_FORWARD_OFFSET);
 
-    // Ensure up vector is correct before lookAt
-    camera.up.set(0, 1, 0);
+    // lookAt with up=(0,-1,0) gives correct left-right (no mirror) when
+    // looking along +Z, but flips the image vertically. We fix the vertical
+    // flip by negating the projection matrix Y after updateProjectionMatrix.
+    camera.up.set(0, -1, 0);
 
     const st = smoothTangentRef.current;
-    const lookTarget = new THREE.Vector3(
+    const lookTarget = _v1.set(
       camera.position.x + st.x * 100,
       camera.position.y + CAMERA_PITCH * 20,
       camera.position.z + st.z * 100
     );
     camera.lookAt(lookTarget);
 
-    // Very subtle steering roll — barely perceptible
+    // Very subtle steering roll
     const steerRatio = player.steerAngleDeg / PHYSICS.MAX_STEER_DEG;
     if (Math.abs(steerRatio) > 0.01) {
       camera.rotateZ(-steerRatio * 0.008);
@@ -103,6 +107,9 @@ function CameraController() {
       const targetFov = BASE_FOV + MAX_FOV_BOOST * speedRatio;
       camera.fov = THREE.MathUtils.lerp(camera.fov, targetFov, 0.05);
       camera.updateProjectionMatrix();
+      // Negate Y in projection to correct the vertical flip from up=(0,-1,0)
+      camera.projectionMatrix.elements[5] *= -1;
+      camera.projectionMatrixInverse.copy(camera.projectionMatrix).invert();
     }
   });
 
