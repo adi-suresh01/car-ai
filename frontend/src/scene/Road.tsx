@@ -10,7 +10,7 @@ import {
   interpolateSampleAtS,
   type SplineSample,
 } from "./roadSpline";
-import type { RouteGeometry } from "../models/types";
+import type { RouteGeometry, RouteControlPoint } from "../models/types";
 
 const TREE_COUNT = 400;
 
@@ -19,13 +19,40 @@ interface RoadGeometryState {
   geometry: RouteGeometry;
 }
 
-function useRoadGeometry(): RoadGeometryState | null {
+// Default road so there's always something to render
+function defaultRouteGeometry(): RouteGeometry {
+  const controlPoints: RouteControlPoint[] = [];
+  let x = 0, z = 0, heading = 0, s = 0;
+  const segs = [
+    [200, 0], [150, 0.004], [100, 0], [180, -0.005], [120, 0],
+    [200, 0.003], [80, 0], [160, -0.008], [100, 0], [140, 0.006],
+    [200, 0], [250, -0.003], [100, 0], [180, 0.01], [80, 0],
+    [120, -0.012], [160, 0], [200, 0.004], [140, 0], [180, -0.006],
+    [200, 0], [160, 0.008], [120, 0], [200, -0.004], [300, 0],
+  ];
+  for (const [len, curv] of segs) {
+    const steps = Math.ceil(len / 10);
+    for (let i = 0; i < steps; i++) {
+      controlPoints.push({ x, z, heading, curvature: curv, s });
+      heading += curv * 10;
+      x += Math.sin(heading) * 10;
+      z += Math.cos(heading) * 10;
+      s += 10;
+    }
+  }
+  controlPoints.push({ x, z, heading, curvature: 0, s });
+  return { controlPoints, laneCount: 4, laneWidth: 3.6, totalLength: s, speedLimits: [{ s: 0, speedMph: 65 }] };
+}
+
+const DEFAULT_ROUTE = defaultRouteGeometry();
+
+function useRoadGeometry(): RoadGeometryState {
   const routeGeometry = useSimulationStore((s) => s.routeGeometry);
 
   return useMemo(() => {
-    if (!routeGeometry) return null;
-    const samples = sampleSpline(routeGeometry);
-    return { samples, geometry: routeGeometry };
+    const geo = routeGeometry ?? DEFAULT_ROUTE;
+    const samples = sampleSpline(geo);
+    return { samples, geometry: geo };
   }, [routeGeometry]);
 }
 
@@ -561,8 +588,6 @@ function BirchTree({ tree }: { tree: TreeInstance }) {
 
 export function Road() {
   const roadState = useRoadGeometry();
-
-  if (!roadState) return null;
 
   return (
     <group>

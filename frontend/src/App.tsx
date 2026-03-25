@@ -6,7 +6,7 @@ import {
 } from "./state/simulationLoop";
 import { startInputListeners, stopInputListeners } from "./controllers/input";
 import { autopilot } from "./controllers/autopilot";
-import { fetchLayout, getRouteGeometry, getRouteDirections } from "./services/api";
+import { fetchLayout, planRoute, getRouteGeometry, getRouteDirections } from "./services/api";
 import { DriverView } from "./scene/DriverView";
 import { TopDownView } from "./scene/TopDownView";
 import { MissionStatus } from "./components/HUD/MissionStatus";
@@ -133,13 +133,17 @@ export function App() {
       .then((layout) => store.setLayout(layout))
       .catch((err) => console.error("[App] Layout fetch failed:", err));
 
-    getRouteGeometry()
-      .then((geo) => store.setRouteGeometry(geo))
-      .catch((err) => console.error("[App] Route geometry fetch failed:", err));
-
-    getRouteDirections()
-      .then((dirs) => store.setRouteDirections(dirs))
-      .catch((err) => console.error("[App] Route directions fetch failed:", err));
+    // Plan a default route, then fetch geometry and directions
+    planRoute("San Jose", "Santa Cruz")
+      .then((summary) => {
+        store.setRouteSummary(summary);
+        return Promise.all([getRouteGeometry(), getRouteDirections()]);
+      })
+      .then(([geo, dirs]) => {
+        store.setRouteGeometry(geo);
+        store.setRouteDirections(dirs);
+      })
+      .catch((err) => console.error("[App] Route setup failed:", err));
 
     autopilot.initialize();
 
