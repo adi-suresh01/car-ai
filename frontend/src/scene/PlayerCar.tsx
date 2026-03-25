@@ -4,27 +4,27 @@ import * as THREE from "three";
 import { useSimulationStore } from "../state/simulationStore";
 import { PHYSICS } from "../models/types";
 
-// ── Positioning constants (camera-relative, camera = driver's eyes at origin) ──
+// ── All positions are camera-relative (camera = driver's eyes at origin) ──
+// Negative Y = below eye level, negative Z = in front of driver
 
-const DASH_TOP_Y = -0.37;
-const DASH_Z_FRONT = -0.75;
-const DASH_Z_BACK = -0.30;
+const DASH_TOP_Y = -0.38;
+const DASH_Z = -0.50;
 const DASH_WIDTH = 2.0;
+const DASH_DEPTH = 0.55;
+const DASH_THICK = 0.16;
 
 const SW_X = -0.28;
 const SW_Y = -0.34;
-const SW_Z = -0.36;
+const SW_Z = -0.38;
 const SW_RADIUS = 0.19;
-const SW_TILT = -0.40;
+const SW_TILT = -0.42;
 
 const PILLAR_X = 0.88;
 
-const CLUSTER_W = 0.28;
-const CLUSTER_H = 0.14;
 const CLUSTER_CANVAS_W = 512;
 const CLUSTER_CANVAS_H = 256;
 
-// ── Materials ──
+// ── Materials (warm, natural tones) ──
 
 const mats = {
   dash: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.92, metalness: 0.05 }),
@@ -44,54 +44,29 @@ const mats = {
   mirror: new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.05, metalness: 0.95 }),
 };
 
-// ── Dashboard geometry (smooth curved profile via ExtrudeGeometry) ──
-
-function createDashboardGeometry(): THREE.ExtrudeGeometry {
-  const shape = new THREE.Shape();
-  const hw = DASH_WIDTH / 2;
-
-  shape.moveTo(-hw, 0);
-
-  shape.bezierCurveTo(-hw, 0, -hw + 0.15, 0.12, -hw + 0.4, 0.13);
-  shape.bezierCurveTo(-0.3, 0.16, 0.3, 0.16, hw - 0.4, 0.13);
-  shape.bezierCurveTo(hw - 0.15, 0.12, hw, 0, hw, 0);
-
-  shape.lineTo(hw, -0.18);
-
-  shape.bezierCurveTo(hw, -0.22, hw - 0.1, -0.24, hw - 0.3, -0.24);
-  shape.lineTo(-hw + 0.3, -0.24);
-  shape.bezierCurveTo(-hw + 0.1, -0.24, -hw, -0.22, -hw, -0.18);
-
-  shape.closePath();
-
-  const extrudeSettings: THREE.ExtrudeGeometryOptions = {
-    depth: Math.abs(DASH_Z_FRONT - DASH_Z_BACK),
-    bevelEnabled: true,
-    bevelThickness: 0.02,
-    bevelSize: 0.02,
-    bevelSegments: 4,
-    curveSegments: 24,
-  };
-
-  return new THREE.ExtrudeGeometry(shape, extrudeSettings);
-}
+// ── Dashboard ──
 
 function Dashboard() {
-  const dashGeo = useMemo(() => createDashboardGeometry(), []);
-
   return (
     <group>
-      <mesh
-        geometry={dashGeo}
-        material={mats.dash}
-        position={[0, DASH_TOP_Y - 0.13, DASH_Z_BACK]}
-        rotation={[-Math.PI / 2, 0, 0]}
-      />
-      <mesh
-        material={mats.dashTop}
-        position={[0, DASH_TOP_Y + 0.02, (DASH_Z_FRONT + DASH_Z_BACK) / 2]}
-      >
-        <boxGeometry args={[DASH_WIDTH - 0.1, 0.018, Math.abs(DASH_Z_FRONT - DASH_Z_BACK) * 0.5]} />
+      {/* Main dashboard body */}
+      <mesh position={[0, DASH_TOP_Y - DASH_THICK / 2, DASH_Z - DASH_DEPTH / 2]} material={mats.dash}>
+        <boxGeometry args={[DASH_WIDTH, DASH_THICK, DASH_DEPTH]} />
+      </mesh>
+
+      {/* Dashboard top surface — padded lip */}
+      <mesh position={[0, DASH_TOP_Y + 0.012, DASH_Z - DASH_DEPTH * 0.35]} material={mats.dashTop}>
+        <boxGeometry args={[DASH_WIDTH - 0.06, 0.025, DASH_DEPTH * 0.6]} />
+      </mesh>
+
+      {/* Dashboard curved front — where it meets windshield */}
+      <mesh position={[0, DASH_TOP_Y - 0.02, DASH_Z - DASH_DEPTH + 0.04]} material={mats.dash} rotation={[0.25, 0, 0]}>
+        <boxGeometry args={[DASH_WIDTH, 0.06, 0.1]} />
+      </mesh>
+
+      {/* Cluster hood — visor above instruments */}
+      <mesh position={[SW_X, DASH_TOP_Y + 0.12, DASH_Z - 0.04]} rotation={[-0.5, 0, 0]} material={mats.darkTrim}>
+        <boxGeometry args={[0.36, 0.04, 0.14]} />
       </mesh>
     </group>
   );
@@ -144,32 +119,30 @@ function InstrumentCluster() {
     ctx.fillStyle = "#0a0a0a";
     ctx.fillRect(0, 0, w, h);
 
-    // ── Speed (left side) ──
+    // Speed (left)
     ctx.fillStyle = "#e8e8e8";
     ctx.font = "bold 72px sans-serif";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText(Math.round(speedKph).toString(), 100, 100);
-
     ctx.fillStyle = "#888888";
     ctx.font = "16px sans-serif";
     ctx.fillText("KPH", 100, 150);
 
-    // ── Tachometer arc (center) ──
+    // Tachometer arc (center)
     const cx = w / 2;
     const cy = 105;
     const arcR = 65;
     const arcStart = Math.PI * 0.75;
-    const arcEnd = Math.PI * 0.25;
     const arcTotal = Math.PI * 1.5;
 
     ctx.strokeStyle = "#333333";
     ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.arc(cx, cy, arcR, arcStart, Math.PI * 2 + arcEnd, false);
+    ctx.arc(cx, cy, arcR, arcStart, Math.PI * 2 + Math.PI * 0.25, false);
     ctx.stroke();
 
-    const rpmFraction = Math.min(1, (speedKph / 220));
+    const rpmFraction = Math.min(1, speedKph / 220);
     const needleAngle = arcStart + arcTotal * rpmFraction;
 
     ctx.strokeStyle = "#ff4422";
@@ -178,10 +151,8 @@ function InstrumentCluster() {
     ctx.arc(cx, cy, arcR, arcStart, needleAngle, false);
     ctx.stroke();
 
-    const needleLen = arcR - 8;
-    const nx = cx + Math.cos(needleAngle) * needleLen;
-    const ny = cy + Math.sin(needleAngle) * needleLen;
-
+    const nx = cx + Math.cos(needleAngle) * (arcR - 8);
+    const ny = cy + Math.sin(needleAngle) * (arcR - 8);
     ctx.strokeStyle = "#ffffff";
     ctx.lineWidth = 2.5;
     ctx.beginPath();
@@ -194,24 +165,21 @@ function InstrumentCluster() {
     ctx.arc(cx, cy, 8, 0, Math.PI * 2);
     ctx.fill();
 
-    // ── Gear indicator (inside tach) ──
+    // Gear (inside tach)
     ctx.fillStyle = "#cccccc";
     ctx.font = "bold 28px sans-serif";
     ctx.textAlign = "center";
     ctx.fillText(`D${gear}`, cx, cy + 38);
 
-    // ── Odometer (center bottom) ──
+    // Odometer (center bottom)
     ctx.fillStyle = "#aaaaaa";
     ctx.font = "22px monospace";
-    ctx.textAlign = "center";
-    const odo = "00000";
-    ctx.fillText(odo, cx, 195);
-
+    ctx.fillText("00000", cx, 195);
     ctx.fillStyle = "#666666";
     ctx.font = "12px sans-serif";
     ctx.fillText("KM", cx, 215);
 
-    // ── Clock (below odometer) ──
+    // Clock
     const now = new Date();
     const hours = now.getHours().toString().padStart(2, "0");
     const minutes = now.getMinutes().toString().padStart(2, "0");
@@ -219,17 +187,15 @@ function InstrumentCluster() {
     ctx.font = "18px monospace";
     ctx.fillText(`${hours}:${minutes}`, cx, 240);
 
-    // ── Drive mode (right side) ──
+    // Drive mode (right)
     ctx.fillStyle = "#77aa77";
     ctx.font = "bold 26px sans-serif";
-    ctx.textAlign = "center";
     ctx.fillText("AWD", w - 100, 100);
-
     ctx.fillStyle = "#555555";
     ctx.font = "14px sans-serif";
     ctx.fillText("DRIVE MODE", w - 100, 130);
 
-    // ── Thin accent lines ──
+    // Accent lines
     ctx.strokeStyle = "#2a2a2a";
     ctx.lineWidth = 1;
     ctx.beginPath();
@@ -257,12 +223,14 @@ function InstrumentCluster() {
   );
 
   return (
-    <group position={[SW_X, DASH_TOP_Y + 0.1, DASH_Z_BACK - 0.12]} rotation={[-0.2, 0, 0]}>
-      <mesh ref={meshRef} material={clusterMat}>
-        <planeGeometry args={[CLUSTER_W, CLUSTER_H]} />
+    <group position={[SW_X, DASH_TOP_Y + 0.06, DASH_Z - 0.06]} rotation={[-0.22, 0, 0]}>
+      {/* Cluster background panel */}
+      <mesh position={[0, 0, -0.008]} material={mats.darkTrim}>
+        <boxGeometry args={[0.32, 0.16, 0.012]} />
       </mesh>
-      <mesh material={mats.darkTrim} position={[0, 0.08, -0.005]}>
-        <boxGeometry args={[CLUSTER_W + 0.04, 0.035, 0.025]} />
+      {/* Gauge display */}
+      <mesh ref={meshRef} material={clusterMat}>
+        <planeGeometry args={[0.28, 0.14]} />
       </mesh>
     </group>
   );
@@ -281,38 +249,31 @@ function SteeringWheel() {
 
   return (
     <group position={[SW_X, SW_Y, SW_Z]} rotation={[SW_TILT, 0, 0]} ref={groupRef}>
+      {/* Ring */}
       <mesh material={mats.steering}>
         <torusGeometry args={[SW_RADIUS, 0.017, 20, 48]} />
       </mesh>
+      {/* Leather wrap */}
       <mesh material={mats.leather}>
         <torusGeometry args={[SW_RADIUS, 0.021, 10, 48]} />
       </mesh>
-
+      {/* Hub */}
       <mesh material={mats.darkTrim} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.05, 0.05, 0.015, 24]} />
       </mesh>
-
       {/* Top spoke */}
       <mesh material={mats.steering} position={[0, SW_RADIUS * 0.48, 0]}>
         <boxGeometry args={[0.028, SW_RADIUS * 0.5, 0.012]} />
       </mesh>
       {/* Bottom-left spoke */}
-      <mesh
-        material={mats.steering}
-        position={[-SW_RADIUS * 0.4, -SW_RADIUS * 0.26, 0]}
-        rotation={[0, 0, -0.7]}
-      >
+      <mesh material={mats.steering} position={[-SW_RADIUS * 0.4, -SW_RADIUS * 0.26, 0]} rotation={[0, 0, -0.7]}>
         <boxGeometry args={[0.028, SW_RADIUS * 0.58, 0.012]} />
       </mesh>
       {/* Bottom-right spoke */}
-      <mesh
-        material={mats.steering}
-        position={[SW_RADIUS * 0.4, -SW_RADIUS * 0.26, 0]}
-        rotation={[0, 0, 0.7]}
-      >
+      <mesh material={mats.steering} position={[SW_RADIUS * 0.4, -SW_RADIUS * 0.26, 0]} rotation={[0, 0, 0.7]}>
         <boxGeometry args={[0.028, SW_RADIUS * 0.58, 0.012]} />
       </mesh>
-
+      {/* Column */}
       <mesh material={mats.darkTrim} position={[0, 0, 0.14]} rotation={[Math.PI / 2, 0, 0]}>
         <cylinderGeometry args={[0.028, 0.032, 0.26, 12]} />
       </mesh>
@@ -320,54 +281,24 @@ function SteeringWheel() {
   );
 }
 
-// ── A-pillars (trapezoidal cross-section, ExtrudeGeometry) ──
-
-function createPillarGeometry(): THREE.ExtrudeGeometry {
-  const shape = new THREE.Shape();
-  shape.moveTo(-0.04, -0.025);
-  shape.lineTo(0.04, -0.015);
-  shape.lineTo(0.035, 0.015);
-  shape.lineTo(-0.035, 0.025);
-  shape.closePath();
-
-  return new THREE.ExtrudeGeometry(shape, {
-    depth: 0.92,
-    bevelEnabled: true,
-    bevelThickness: 0.005,
-    bevelSize: 0.005,
-    bevelSegments: 2,
-    curveSegments: 8,
-  });
-}
+// ── A-pillars and roof ──
 
 function APillarsAndRoof() {
-  const pillarGeo = useMemo(() => createPillarGeometry(), []);
-
-  const leftPillarPos: [number, number, number] = [-PILLAR_X, DASH_TOP_Y + 0.15, -0.72];
-  const rightPillarPos: [number, number, number] = [PILLAR_X, DASH_TOP_Y + 0.15, -0.72];
-
   return (
     <group>
       {/* Left A-pillar */}
-      <mesh
-        geometry={pillarGeo}
-        material={mats.darkTrim}
-        position={leftPillarPos}
-        rotation={[-0.55, 0.1, 0.06]}
-      />
+      <mesh material={mats.darkTrim} position={[-PILLAR_X, 0.06, -0.46]} rotation={[0.55, 0.1, 0.06]}>
+        <boxGeometry args={[0.07, 0.05, 0.88]} />
+      </mesh>
       {/* Right A-pillar */}
-      <mesh
-        geometry={pillarGeo}
-        material={mats.darkTrim}
-        position={rightPillarPos}
-        rotation={[-0.55, -0.1, -0.06]}
-      />
+      <mesh material={mats.darkTrim} position={[PILLAR_X, 0.06, -0.46]} rotation={[0.55, -0.1, -0.06]}>
+        <boxGeometry args={[0.07, 0.05, 0.88]} />
+      </mesh>
 
       {/* Roof header strip */}
       <mesh position={[0, 0.48, -0.58]} material={mats.roof}>
         <boxGeometry args={[1.9, 0.04, 0.1]} />
       </mesh>
-
       {/* Roof panel behind driver */}
       <mesh position={[0, 0.5, 0.1]} material={mats.roof}>
         <boxGeometry args={[1.8, 0.025, 0.75]} />
@@ -398,35 +329,23 @@ function APillarsAndRoof() {
 // ── Door panels ──
 
 function DoorPanels() {
-  const doorShape = useMemo(() => {
-    const shape = new THREE.Shape();
-    shape.moveTo(0, -0.3);
-    shape.bezierCurveTo(0, -0.3, 0, 0.2, 0, 0.25);
-    shape.lineTo(0.04, 0.25);
-    shape.lineTo(0.04, -0.3);
-    shape.closePath();
-
-    return new THREE.ExtrudeGeometry(shape, {
-      depth: 0.9,
-      bevelEnabled: false,
-      curveSegments: 12,
-    });
-  }, []);
-
   return (
     <group>
       {/* Left door */}
-      <group position={[-0.94, -0.12, -0.4]}>
-        <mesh geometry={doorShape} material={mats.doorPanel} />
-        <mesh position={[0.025, 0.05, 0.35]} material={mats.leather}>
+      <group position={[-0.94, -0.18, -0.1]}>
+        <mesh material={mats.doorPanel}>
+          <boxGeometry args={[0.055, 0.6, 0.88]} />
+        </mesh>
+        <mesh position={[0.03, 0.06, 0.0]} material={mats.leather}>
           <boxGeometry args={[0.06, 0.045, 0.26]} />
         </mesh>
       </group>
-
       {/* Right door */}
-      <group position={[0.90, -0.12, -0.4]}>
-        <mesh geometry={doorShape} material={mats.doorPanel} rotation={[0, Math.PI, 0]} />
-        <mesh position={[-0.025, 0.05, 0.35]} material={mats.leather}>
+      <group position={[0.94, -0.18, -0.1]}>
+        <mesh material={mats.doorPanel}>
+          <boxGeometry args={[0.055, 0.6, 0.88]} />
+        </mesh>
+        <mesh position={[-0.03, 0.06, 0.0]} material={mats.leather}>
           <boxGeometry args={[0.06, 0.045, 0.26]} />
         </mesh>
       </group>
