@@ -93,10 +93,10 @@ function CameraController() {
     );
     camera.lookAt(lookTarget);
 
-    // Apply steering roll around the camera's local look axis (not Euler Z)
+    // Very subtle steering roll — barely perceptible
     const steerRatio = player.steerAngleDeg / PHYSICS.MAX_STEER_DEG;
-    if (Math.abs(steerRatio) > 0.001) {
-      camera.rotateZ(-steerRatio * 0.03);
+    if (Math.abs(steerRatio) > 0.01) {
+      camera.rotateZ(-steerRatio * 0.008);
     }
 
     if (camera instanceof THREE.PerspectiveCamera) {

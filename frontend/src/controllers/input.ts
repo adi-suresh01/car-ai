@@ -7,50 +7,45 @@ interface InputState {
   brake: number;
 }
 
+// Raw key state (binary 0/1)
+const keys = {
+  steerLeft: false,
+  steerRight: false,
+  throttle: false,
+  brake: false,
+};
+
+// Smoothed output values sent to backend
 const state: InputState = {
   steering: 0,
   throttle: 0,
   brake: 0,
 };
 
+// Steering ramps up/down smoothly instead of snapping to ±1
+const STEER_RAMP_SPEED = 2.5;   // per second — reaches full lock in ~0.4s
+const STEER_RETURN_SPEED = 4.0; // per second — centers faster than it turns
+const STEER_MAX = 0.6;          // cap at 60% of max lock for keyboard (full lock is too aggressive)
+
 const KEY_BINDINGS: Record<string, () => void> = {
-  ArrowLeft: () => {
-    state.steering = -1;
-  },
-  ArrowRight: () => {
-    state.steering = 1;
-  },
-  ArrowUp: () => {
-    state.throttle = 1;
-  },
-  ArrowDown: () => {
-    state.brake = 1;
-  },
-  Space: () => {
-    state.brake = 1;
-  },
+  ArrowLeft: () => { keys.steerLeft = true; },
+  ArrowRight: () => { keys.steerRight = true; },
+  ArrowUp: () => { keys.throttle = true; },
+  ArrowDown: () => { keys.brake = true; },
+  Space: () => { keys.brake = true; },
 };
 
 const KEY_RELEASE: Record<string, () => void> = {
-  ArrowLeft: () => {
-    state.steering = 0;
-  },
-  ArrowRight: () => {
-    state.steering = 0;
-  },
-  ArrowUp: () => {
-    state.throttle = 0;
-  },
-  ArrowDown: () => {
-    state.brake = 0;
-  },
-  Space: () => {
-    state.brake = 0;
-  },
+  ArrowLeft: () => { keys.steerLeft = false; },
+  ArrowRight: () => { keys.steerRight = false; },
+  ArrowUp: () => { keys.throttle = false; },
+  ArrowDown: () => { keys.brake = false; },
+  Space: () => { keys.brake = false; },
 };
 
 let inputInterval: ReturnType<typeof setInterval> | null = null;
 let wasActive = false;
+let lastUpdateTime = 0;
 
 function isTyping(e: KeyboardEvent): boolean {
   const tag = (e.target as HTMLElement)?.tagName;
@@ -64,7 +59,6 @@ function isOverlayOpen(): boolean {
 
 function handleKeyDown(e: KeyboardEvent): void {
   if (isTyping(e) || isOverlayOpen()) return;
-
   const handler = KEY_BINDINGS[e.code];
   if (handler) {
     e.preventDefault();
@@ -74,7 +68,6 @@ function handleKeyDown(e: KeyboardEvent): void {
 
 function handleKeyUp(e: KeyboardEvent): void {
   if (isTyping(e) || isOverlayOpen()) return;
-
   const handler = KEY_RELEASE[e.code];
   if (handler) {
     e.preventDefault();
@@ -82,10 +75,43 @@ function handleKeyUp(e: KeyboardEvent): void {
   }
 }
 
+function updateSmoothedInput(): void {
+  const now = performance.now();
+  const dt = lastUpdateTime === 0 ? 0.016 : Math.min((now - lastUpdateTime) / 1000, 0.1);
+  lastUpdateTime = now;
+
+  // Smooth steering ramp
+  const steerTarget = (keys.steerLeft ? -STEER_MAX : 0) + (keys.steerRight ? STEER_MAX : 0);
+  if (Math.abs(steerTarget) > 0.01) {
+    // Ramping toward target
+    const diff = steerTarget - state.steering;
+    const step = STEER_RAMP_SPEED * dt;
+    if (Math.abs(diff) < step) {
+      state.steering = steerTarget;
+    } else {
+      state.steering += Math.sign(diff) * step;
+    }
+  } else {
+    // Returning to center
+    const step = STEER_RETURN_SPEED * dt;
+    if (Math.abs(state.steering) < step) {
+      state.steering = 0;
+    } else {
+      state.steering -= Math.sign(state.steering) * step;
+    }
+  }
+
+  // Throttle and brake stay binary (responsive)
+  state.throttle = keys.throttle ? 1 : 0;
+  state.brake = keys.brake ? 1 : 0;
+}
+
 function sendInput(): void {
   if (useSimulationStore.getState().autopilotEnabled) return;
 
-  const isActive = state.steering !== 0 || state.throttle !== 0 || state.brake !== 0;
+  updateSmoothedInput();
+
+  const isActive = Math.abs(state.steering) > 0.01 || state.throttle > 0 || state.brake > 0;
 
   // Cancel cruise/auto modes when manual input is detected
   if (isActive && !wasActive) {
@@ -116,6 +142,7 @@ export function getInputState(): Readonly<InputState> {
 export function startInputListeners(): void {
   window.addEventListener("keydown", handleKeyDown);
   window.addEventListener("keyup", handleKeyUp);
+  lastUpdateTime = 0;
   inputInterval = setInterval(sendInput, 16);
 }
 
@@ -126,6 +153,10 @@ export function stopInputListeners(): void {
     clearInterval(inputInterval);
     inputInterval = null;
   }
+  keys.steerLeft = false;
+  keys.steerRight = false;
+  keys.throttle = false;
+  keys.brake = false;
   state.steering = 0;
   state.throttle = 0;
   state.brake = 0;
