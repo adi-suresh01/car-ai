@@ -82,7 +82,9 @@ function CameraController() {
 
     camera.position.set(playerLaneX + bobX, DRIVER_EYE_HEIGHT + bobY, CAMERA_FORWARD_OFFSET);
 
-    // Use lookAt to orient camera — preserves handedness (no L/R mirror)
+    // Ensure up vector is correct before lookAt
+    camera.up.set(0, 1, 0);
+
     const st = smoothTangentRef.current;
     const lookTarget = new THREE.Vector3(
       camera.position.x + st.x * 100,
@@ -91,9 +93,11 @@ function CameraController() {
     );
     camera.lookAt(lookTarget);
 
-    // Subtle roll when steering for immersion
+    // Apply steering roll around the camera's local look axis (not Euler Z)
     const steerRatio = player.steerAngleDeg / PHYSICS.MAX_STEER_DEG;
-    camera.rotation.z = -steerRatio * 0.03;
+    if (Math.abs(steerRatio) > 0.001) {
+      camera.rotateZ(-steerRatio * 0.03);
+    }
 
     if (camera instanceof THREE.PerspectiveCamera) {
       const targetFov = BASE_FOV + MAX_FOV_BOOST * speedRatio;

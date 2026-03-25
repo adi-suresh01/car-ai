@@ -1,4 +1,4 @@
-import { useRef, useMemo } from "react";
+import { useRef, useMemo, useEffect } from "react";
 import { useFrame } from "@react-three/fiber";
 import { useTexture } from "@react-three/drei";
 import * as THREE from "three";
@@ -48,6 +48,13 @@ const DEFAULT_ROUTE = defaultRouteGeometry();
 
 function useRoadGeometry(): RoadGeometryState {
   const routeGeometry = useSimulationStore((s) => s.routeGeometry);
+
+  // Ensure the store always has route geometry so CameraController can use it
+  useEffect(() => {
+    if (!useSimulationStore.getState().routeGeometry) {
+      useSimulationStore.getState().setRouteGeometry(DEFAULT_ROUTE);
+    }
+  }, []);
 
   return useMemo(() => {
     const geo = routeGeometry ?? DEFAULT_ROUTE;

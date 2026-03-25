@@ -190,6 +190,9 @@ impl Vehicle {
         self.position_x += self.speed_mps * self.heading_rad.sin() * dt;
         self.position_z += self.speed_mps * self.heading_rad.cos() * dt;
 
+        // Track arc-length even without a road spline
+        self.position_s += self.speed_mps * dt;
+
         let target_x = lane_center(self.lane_index);
         self.lateral_offset = self.position_x - target_x;
 
