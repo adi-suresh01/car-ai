@@ -41,6 +41,20 @@ const mats = {
     depthWrite: false,
     side: THREE.DoubleSide,
   }),
+  screen: new THREE.MeshStandardMaterial({
+    color: 0x0a1828,
+    emissive: 0x0a2848,
+    emissiveIntensity: 0.5,
+    roughness: 0.2,
+    metalness: 0.08,
+  }),
+  cluster: new THREE.MeshStandardMaterial({
+    color: 0x060608,
+    emissive: 0x152540,
+    emissiveIntensity: 0.7,
+    roughness: 0.25,
+    metalness: 0.05,
+  }),
   mirror: new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.05, metalness: 0.95 }),
 };
 
@@ -64,10 +78,31 @@ function Dashboard() {
         <boxGeometry args={[DASH_WIDTH, 0.06, 0.1]} />
       </mesh>
 
-      {/* Cluster hood — visor above instruments */}
-      <mesh position={[SW_X, DASH_TOP_Y + 0.12, DASH_Z - 0.04]} rotation={[-0.5, 0, 0]} material={mats.darkTrim}>
-        <boxGeometry args={[0.36, 0.04, 0.14]} />
+      {/* Instrument cluster panel behind steering wheel */}
+      <mesh position={[SW_X, DASH_TOP_Y + 0.08, DASH_Z - 0.06]} rotation={[-0.22, 0, 0]} material={mats.cluster}>
+        <boxGeometry args={[0.30, 0.13, 0.015]} />
       </mesh>
+
+      {/* Cluster visor/hood */}
+      <mesh position={[SW_X, DASH_TOP_Y + 0.15, DASH_Z - 0.03]} rotation={[-0.55, 0, 0]} material={mats.darkTrim}>
+        <boxGeometry args={[0.34, 0.04, 0.12]} />
+      </mesh>
+
+      {/* Infotainment screen (CarPlay) */}
+      <mesh position={[0.22, DASH_TOP_Y + 0.1, DASH_Z - 0.01]} rotation={[-0.18, 0, 0]} material={mats.screen}>
+        <boxGeometry args={[0.28, 0.16, 0.012]} />
+      </mesh>
+      {/* Screen bezel */}
+      <mesh position={[0.22, DASH_TOP_Y + 0.1, DASH_Z - 0.015]} rotation={[-0.18, 0, 0]} material={mats.darkTrim}>
+        <boxGeometry args={[0.30, 0.18, 0.008]} />
+      </mesh>
+
+      {/* Air vents */}
+      {[-0.50, 0.0, 0.50].map((x, i) => (
+        <mesh key={i} position={[x, DASH_TOP_Y + 0.02, DASH_Z + 0.04]} material={mats.darkTrim}>
+          <boxGeometry args={[0.14, 0.035, 0.03]} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -88,6 +123,7 @@ function InstrumentCluster() {
     const texture = new THREE.CanvasTexture(canvas);
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
+    texture.flipY = false;
     textureRef.current = texture;
 
     if (meshRef.current) {
@@ -95,9 +131,7 @@ function InstrumentCluster() {
       (meshRef.current.material as THREE.MeshStandardMaterial).needsUpdate = true;
     }
 
-    return () => {
-      texture.dispose();
-    };
+    return () => { texture.dispose(); };
   }, []);
 
   useFrame(() => {
@@ -112,7 +146,6 @@ function InstrumentCluster() {
     const speedMph = state.player.speedMph;
     const speedKph = speedMph * 1.60934;
     const gear = state.player.gear;
-
     const w = CLUSTER_CANVAS_W;
     const h = CLUSTER_CANVAS_H;
 
@@ -181,11 +214,12 @@ function InstrumentCluster() {
 
     // Clock
     const now = new Date();
-    const hours = now.getHours().toString().padStart(2, "0");
-    const minutes = now.getMinutes().toString().padStart(2, "0");
     ctx.fillStyle = "#999999";
     ctx.font = "18px monospace";
-    ctx.fillText(`${hours}:${minutes}`, cx, 240);
+    ctx.fillText(
+      `${now.getHours().toString().padStart(2, "0")}:${now.getMinutes().toString().padStart(2, "0")}`,
+      cx, 240
+    );
 
     // Drive mode (right)
     ctx.fillStyle = "#77aa77";
@@ -195,40 +229,19 @@ function InstrumentCluster() {
     ctx.font = "14px sans-serif";
     ctx.fillText("DRIVE MODE", w - 100, 130);
 
-    // Accent lines
-    ctx.strokeStyle = "#2a2a2a";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(20, 30);
-    ctx.lineTo(w - 20, 30);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(20, h - 20);
-    ctx.lineTo(w - 20, h - 20);
-    ctx.stroke();
-
     texture.needsUpdate = true;
   });
 
   const clusterMat = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: 0xffffff,
-        roughness: 0.3,
-        metalness: 0.05,
-        emissive: 0x222222,
-        emissiveIntensity: 0.3,
-      }),
+    () => new THREE.MeshStandardMaterial({
+      color: 0xffffff, roughness: 0.3, metalness: 0.05,
+      emissive: 0x222222, emissiveIntensity: 0.3,
+    }),
     []
   );
 
   return (
     <group position={[SW_X, DASH_TOP_Y + 0.06, DASH_Z - 0.06]} rotation={[-0.22, 0, 0]}>
-      {/* Cluster background panel */}
-      <mesh position={[0, 0, -0.008]} material={mats.darkTrim}>
-        <boxGeometry args={[0.32, 0.16, 0.012]} />
-      </mesh>
-      {/* Gauge display */}
       <mesh ref={meshRef} material={clusterMat}>
         <planeGeometry args={[0.28, 0.14]} />
       </mesh>
@@ -331,7 +344,6 @@ function APillarsAndRoof() {
 function DoorPanels() {
   return (
     <group>
-      {/* Left door */}
       <group position={[-0.94, -0.18, -0.1]}>
         <mesh material={mats.doorPanel}>
           <boxGeometry args={[0.055, 0.6, 0.88]} />
@@ -340,7 +352,6 @@ function DoorPanels() {
           <boxGeometry args={[0.06, 0.045, 0.26]} />
         </mesh>
       </group>
-      {/* Right door */}
       <group position={[0.94, -0.18, -0.1]}>
         <mesh material={mats.doorPanel}>
           <boxGeometry args={[0.055, 0.6, 0.88]} />

@@ -59,6 +59,11 @@ export function findSampleAtS(samples: SplineSample[], s: number): { sample: Spl
     };
   }
 
+  const totalS = samples[samples.length - 1].s;
+  if (totalS > 0) {
+    s = ((s % totalS) + totalS) % totalS;
+  }
+
   const idx = Math.round(s / SAMPLE_INTERVAL);
   const clamped = Math.max(0, Math.min(idx, samples.length - 1));
   return { sample: samples[clamped], index: clamped };
@@ -67,6 +72,12 @@ export function findSampleAtS(samples: SplineSample[], s: number): { sample: Spl
 export function interpolateSampleAtS(samples: SplineSample[], s: number): SplineSample {
   if (samples.length === 0) {
     return { position: new THREE.Vector3(), tangent: new THREE.Vector3(0, 0, 1), normal: new THREE.Vector3(1, 0, 0), s: 0, curvature: 0 };
+  }
+
+  // Wrap s to loop the road endlessly
+  const totalS = samples[samples.length - 1].s;
+  if (totalS > 0) {
+    s = ((s % totalS) + totalS) % totalS;
   }
 
   const rawIdx = s / SAMPLE_INTERVAL;
