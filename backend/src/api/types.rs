@@ -104,6 +104,7 @@ pub struct SimulationSnapshot {
 impl SimulationSnapshot {
     pub fn from_world(world: &World) -> Self {
         Self {
+            msg_type: "state",
             timestamp: world.timestamp_ms(),
             player: PlayerSnapshot::from(&world.player),
             vehicles: world.npcs.iter().map(VehicleSnapshot::from).collect(),
