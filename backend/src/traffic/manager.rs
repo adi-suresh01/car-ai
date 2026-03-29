@@ -181,9 +181,9 @@ impl TrafficManager {
         let target_speed = target_speed_for_policy(&policy, lane, rng);
         npc.speed_mps = target_speed;
         npc.behavior = match policy_id {
-            PolicyId::Defensive => Some("defensive".to_string()),
-            PolicyId::Aggressive => Some("aggressive".to_string()),
-            PolicyId::Cruiser => Some("cruiser".to_string()),
+            PolicyId::Defensive => Some("defensive".into()),
+            PolicyId::Aggressive => Some("aggressive".into()),
+            PolicyId::Cruiser => Some("cruiser".into()),
             PolicyId::Random => None,
         };
 
