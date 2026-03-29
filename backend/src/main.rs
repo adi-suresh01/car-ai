@@ -56,7 +56,7 @@ async fn main() -> std::io::Result<()> {
 
     let route_service = web::Data::new(RouteService::new());
 
-    let (broadcast_tx, _) = broadcast::channel::<String>(128);
+    let (broadcast_tx, _) = broadcast::channel::<String>(256);
     let broadcast_tx_data = web::Data::new(broadcast_tx.clone());
 
     let world_for_loop = world_data.clone();

@@ -1,6 +1,4 @@
 use serde::{Deserialize, Serialize};
-use std::borrow::Cow;
-
 use crate::mission::state::{LaneChangeDirection, MissionMode, MissionState};
 use crate::physics::vehicle::Vehicle;
 use crate::physics::world::World;
@@ -214,6 +212,6 @@ pub enum WsClientMessage {
 #[allow(dead_code)]
 #[derive(Debug, Serialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
-pub enum WsServerMessage {
-    State(Box<SimulationSnapshot>),
+pub enum WsServerMessage<'a> {
+    State(Box<SimulationSnapshot<'a>>),
 }

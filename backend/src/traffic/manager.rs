@@ -86,7 +86,7 @@ impl TrafficManager {
             self.spawn_npc(npcs, lane, z, &mut rng);
         }
 
-        self.update_npc_behavior(npcs);
+        self.update_npc_behavior(npcs, &mut rng);
     }
 
     pub fn reset(&mut self, npcs: &mut Vec<Vehicle>) {
@@ -209,7 +209,7 @@ impl TrafficManager {
         }
     }
 
-    fn update_npc_behavior(&mut self, npcs: &mut [Vehicle]) {
+    fn update_npc_behavior(&mut self, npcs: &mut [Vehicle], rng: &mut impl Rng) {
         let len = npcs.len().min(self.npc_states.len());
 
         for i in 0..len {
@@ -218,7 +218,7 @@ impl TrafficManager {
             }
         }
 
-        let mut lane_changes: Vec<(usize, usize)> = Vec::new();
+        let mut lane_changes: Vec<(usize, usize)> = Vec::with_capacity(4);
 
         for i in 0..len {
             let lane = npcs[i].lane_index;
@@ -257,7 +257,7 @@ impl TrafficManager {
                 }
 
                 if self.npc_states[i].lane_change_cooldown == 0 {
-                    let roll: f64 = rand::thread_rng().gen();
+                    let roll: f64 = rng.gen();
                     if roll < policy.lane_change_probability {
                         if let Some(target_lane) =
                             self.find_better_lane(i, npcs, &policy)
@@ -280,9 +280,8 @@ impl TrafficManager {
                 self.npc_states[npc_idx].lane_change_cooldown = 180;
 
                 let policy = self.npc_states[npc_idx].policy;
-                let mut rng = rand::thread_rng();
                 self.npc_states[npc_idx].target_speed_mps =
-                    target_speed_for_policy(&policy, target_lane, &mut rng);
+                    target_speed_for_policy(&policy, target_lane, rng);
             }
         }
     }

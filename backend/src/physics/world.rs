@@ -30,7 +30,7 @@ impl World {
         let player = Vehicle::new("player".to_string(), VehicleType::Sedan, 2);
         Self {
             player,
-            npcs: Vec::new(),
+            npcs: Vec::with_capacity(16),
             mission: MissionState::default(),
             collision: false,
             tick: 0,
@@ -186,9 +186,6 @@ impl World {
     }
 
     pub fn timestamp_ms(&self) -> u64 {
-        std::time::SystemTime::now()
-            .duration_since(std::time::UNIX_EPOCH)
-            .unwrap_or_default()
-            .as_millis() as u64
+        self.epoch.elapsed().as_millis() as u64
     }
 }
