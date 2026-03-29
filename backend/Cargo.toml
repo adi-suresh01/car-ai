@@ -19,3 +19,9 @@ reqwest = { version = "0.12", features = ["json", "multipart"] }
 futures-util = "0.3"
 base64 = "0.22"
 bytestring = "1"
+
+[profile.release]
+opt-level = 3
+lto = "thin"
+codegen-units = 1
+strip = true
