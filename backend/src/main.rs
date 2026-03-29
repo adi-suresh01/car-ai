@@ -88,14 +88,7 @@ async fn main() -> std::io::Result<()> {
                 SimulationSnapshot::from_world(&world)
             };
 
-            if let Ok(json) = serde_json::to_string(&serde_json::json!({
-                "type": "state",
-                "timestamp": snapshot.timestamp,
-                "player": snapshot.player,
-                "vehicles": snapshot.vehicles,
-                "mission": snapshot.mission,
-                "collision": snapshot.collision,
-            })) {
+            if let Ok(json) = serde_json::to_string(&snapshot) {
                 let _ = tx_for_loop.send(json);
             }
         }
