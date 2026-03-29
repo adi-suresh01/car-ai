@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use std::borrow::Cow;
 
 use crate::mission::state::{LaneChangeDirection, MissionMode, MissionState};
 use crate::physics::vehicle::Vehicle;
