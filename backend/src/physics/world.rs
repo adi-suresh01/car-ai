@@ -21,6 +21,8 @@ pub struct World {
     /// was received. Mission control will not override throttle/brake/steering while
     /// the player is actively sending input.
     pub manual_input_last_time: Option<f64>,
+    /// Monotonic clock epoch for timestamps (avoids SystemTime per tick).
+    epoch: Instant,
 }
 
 impl World {
@@ -35,6 +37,7 @@ impl World {
             time_s: 0.0,
             road_spline: None,
             manual_input_last_time: None,
+            epoch: Instant::now(),
         }
     }
 
