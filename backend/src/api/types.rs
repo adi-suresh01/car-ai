@@ -66,17 +66,17 @@ pub struct VehicleSnapshot<'a> {
     pub curvature: f64,
 }
 
-impl From<&Vehicle> for VehicleSnapshot {
-    fn from(v: &Vehicle) -> Self {
+impl<'a> VehicleSnapshot<'a> {
+    pub fn from_vehicle(v: &'a Vehicle) -> Self {
         Self {
-            id: v.id.clone(),
-            vehicle_type: v.vehicle_type.as_str().to_string(),
+            id: &v.id,
+            vehicle_type: v.vehicle_type.as_str(),
             lane_index: v.lane_index,
             speed_mph: v.speed_mph(),
             speed_mps: v.speed_mps,
             position: [v.position_x, 0.0, v.position_z],
             heading: [v.heading_rad.sin(), 0.0, v.heading_rad.cos()],
-            behavior: v.behavior.clone(),
+            behavior: v.behavior.as_deref(),
             position_s: v.position_s,
             lateral_t: v.lateral_t,
             road_heading_deg: v.road_heading.to_degrees(),
