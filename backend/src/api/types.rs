@@ -91,24 +91,24 @@ impl<'a> VehicleSnapshot<'a> {
 /// Has a `type` field so the client can distinguish message kinds.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct SimulationSnapshot {
+pub struct SimulationSnapshot<'a> {
     /// Always "state" — lets the client switch on message type.
     #[serde(rename = "type")]
     pub msg_type: &'static str,
     pub timestamp: u64,
     pub player: PlayerSnapshot,
-    pub vehicles: Vec<VehicleSnapshot>,
+    pub vehicles: Vec<VehicleSnapshot<'a>>,
     pub mission: MissionState,
     pub collision: bool,
 }
 
-impl SimulationSnapshot {
-    pub fn from_world(world: &World) -> Self {
+impl<'a> SimulationSnapshot<'a> {
+    pub fn from_world(world: &'a World) -> Self {
         Self {
             msg_type: "state",
             timestamp: world.timestamp_ms(),
             player: PlayerSnapshot::from(&world.player),
-            vehicles: world.npcs.iter().map(VehicleSnapshot::from).collect(),
+            vehicles: world.npcs.iter().map(VehicleSnapshot::from_vehicle).collect(),
             mission: world.mission.clone(),
             collision: world.collision,
         }
