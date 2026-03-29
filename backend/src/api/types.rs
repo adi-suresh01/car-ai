@@ -86,9 +86,14 @@ impl From<&Vehicle> for VehicleSnapshot {
     }
 }
 
+/// Wire format for the WebSocket state broadcast.
+/// Has a `type` field so the client can distinguish message kinds.
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct SimulationSnapshot {
+    /// Always "state" — lets the client switch on message type.
+    #[serde(rename = "type")]
+    pub msg_type: &'static str,
     pub timestamp: u64,
     pub player: PlayerSnapshot,
     pub vehicles: Vec<VehicleSnapshot>,
