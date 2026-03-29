@@ -71,7 +71,8 @@ async fn main() -> std::io::Result<()> {
         loop {
             interval.tick().await;
 
-            let snapshot = {
+            // Serialize while holding the lock — snapshot borrows world (zero-copy).
+            let json = {
                 let mut world = world_for_loop.lock().unwrap();
                 let mut traffic = traffic_for_loop.lock().unwrap();
 
@@ -85,10 +86,11 @@ async fn main() -> std::io::Result<()> {
                     }
                 }
 
-                SimulationSnapshot::from_world(&world)
+                let snapshot = SimulationSnapshot::from_world(&world);
+                serde_json::to_string(&snapshot).ok()
             };
 
-            if let Ok(json) = serde_json::to_string(&snapshot) {
+            if let Some(json) = json {
                 let _ = tx_for_loop.send(json);
             }
         }
