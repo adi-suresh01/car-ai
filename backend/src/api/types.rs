@@ -47,17 +47,17 @@ impl From<&Vehicle> for PlayerSnapshot {
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
-pub struct VehicleSnapshot {
-    pub id: String,
+pub struct VehicleSnapshot<'a> {
+    pub id: &'a str,
     #[serde(rename = "type")]
-    pub vehicle_type: String,
+    pub vehicle_type: &'static str,
     pub lane_index: usize,
     pub speed_mph: f64,
     pub speed_mps: f64,
     pub position: [f64; 3],
     pub heading: [f64; 3],
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub behavior: Option<String>,
+    pub behavior: Option<&'a str>,
     pub position_s: f64,
     pub lateral_t: f64,
     pub road_heading_deg: f64,
